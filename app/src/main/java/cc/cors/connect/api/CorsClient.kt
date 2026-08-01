@@ -9,23 +9,23 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 /**
- * Minimal client for the Cors.Connect Android instance-creation API
+ * Minimal client for the Prometheus Connect instance-creation API
  * (the /api/app endpoints) plus the Telegram login endpoint (/api/auth/telegram).
  *
  * Every request carries the shared static secret in the X-App-Token header
- * (WB_APP_TOKEN on the server). Methods are blocking — call them off the
+ * (APP_TOKEN on the server). Methods are blocking — call them off the
  * main thread. Errors are surfaced as [CorsException].
  */
 class CorsClient(
     private val baseUrl: String = Prefs.corsBaseUrl,
-    private val appToken: String = BuildConfig.CORS_APP_TOKEN,
+    private val appToken: String = BuildConfig.PC_APP_TOKEN,
 ) {
 
     init {
-        require(baseUrl.isNotBlank()) { "CORS_BASE_URL not set" }
+        require(baseUrl.isNotBlank()) { "PC_BASE_URL not set" }
     }
 
-    val isConfigured: Boolean get() = appToken.isNotBlank() && appToken != "REPLACE_WITH_WB_APP_TOKEN"
+    val isConfigured: Boolean get() = appToken.isNotBlank() && appToken != "REPLACE_WITH_APP_TOKEN"
 
     // ---- endpoints -------------------------------------------------------
 
@@ -151,7 +151,7 @@ class CorsClient(
     /**
      * Builds the request URL for [path] (e.g. `/api/app/health`).
      *
-     * For a normal server ([baseUrl] like `https://beta.cors-fox.cc`) the path
+     * For a normal server ([baseUrl] like `https://auth.prometheus.info.gf`) the path
      * is appended directly. When [baseUrl] points at a Yandex Cloud Function
      * (`functions.yandexcloud.net`) the path is *not* appended — that domain
      * does not support path routing and treats `/<id>/api/...` as a different
@@ -186,9 +186,9 @@ class CorsClient(
          * Non-reserved header carrying the app session bearer token when routed
          * through the Yandex Function proxy (see [request] for why a literal
          * "Authorization" header can't be used there). Must match the proxy
-         * function's own constant.
+         * function's own SESSION_HEADER constant.
          */
-        const val PROXY_BEARER_HEADER = "X-Cors-Session-Token"
+        const val PROXY_BEARER_HEADER = "X-Prometheus-Session-Token"
     }
 }
 

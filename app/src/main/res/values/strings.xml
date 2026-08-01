@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name">Cors.Connect</string>
+    <string name="app_name">Prometheus Connect</string>
     <string name="share_logs">Share logs</string>
     <string name="copy_logs_toast">Logs copied to clipboard</string>
     <string name="autofill_settings_title">Autofill settings</string>
@@ -210,7 +210,7 @@
     <string name="cors_toast_instance_forgotten">Instance forgotten</string>
     <string name="cors_toast_signed_out">Signed out</string>
     <string name="cors_toast_no_telegram">Telegram app not found</string>
-    <string name="cors_instance_name">Cors.Connect instance</string>
+    <string name="cors_instance_name">Prometheus Connect</string>
 
     <string name="fgs_justification_vpn">Manages VPN tunnel for network traffic bypass and routing.</string>
     <string name="fgs_justification_proxy">Maintains a local SOCKS5 proxy server for traffic redirection.</string>

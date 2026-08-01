@@ -25,12 +25,14 @@ import bypass.whitelist.util.Prefs
 object TelegramAuth {
 
     /**
-     * The HTTPS App Link the bot's WebApp redirects to. This host/path MUST
-     * match the intent-filter in `AndroidManifest.xml` and the `HTTPS_HOST`
-     * in the server's `static/tg-auth.html`.
+     * The HTTPS App Link the bot's WebApp redirects to. The host comes from
+     * `PC_CALLBACK_HOST` in the build config, which also fills the manifest's
+     * intent-filter placeholder — so the matcher here and the filter that makes
+     * Android intercept the URL can never disagree. It must equally match the
+     * host serving `/webapp` and `/.well-known/assetlinks.json`.
      */
     private const val CALLBACK_SCHEME = "https"
-    private const val CALLBACK_HOST = "beta.cors-fox.cc"
+    private val CALLBACK_HOST = BuildConfig.PC_CALLBACK_HOST
     private const val CALLBACK_PATH = "/tginit"
 
     /** Scheme/host/path of the App Link the bot returns to. */
@@ -38,7 +40,7 @@ object TelegramAuth {
     val HOST: String get() = CALLBACK_HOST
     val PATH: String get() = CALLBACK_PATH
 
-    val botUsername: String = BuildConfig.CORS_TG_BOT
+    val botUsername: String = BuildConfig.PC_TG_BOT
 
     val hasInitData: Boolean get() = Prefs.corsTgInitData.isNotEmpty()
     fun initData(): String = Prefs.corsTgInitData
