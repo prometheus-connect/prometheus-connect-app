@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CorsConnect"
+rootProject.name = "PrometheusConnect"
 include(":app")
  

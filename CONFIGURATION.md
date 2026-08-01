@@ -1,21 +1,7 @@
 # Local configuration
 
-This repo has been cleaned of hardcoded secrets before being made public. Nothing
-in `app/build.gradle.kts` now has a working default for the values below — you
-must supply your own before the app can talk to a real backend.
-
-## What was removed and why
-
-| Removed hardcode | Where it lived | Replaced with |
-|---|---|---|
-| `CORS_APP_TOKEN` static secret (the real `X-App-Token` / `WB_APP_TOKEN` value) | `app/build.gradle.kts` | Placeholder `"REPLACE_WITH_WB_APP_TOKEN"` — the app already detects this placeholder (`CorsClient.isConfigured`) and treats itself as unconfigured. |
-| `CORS_BASE_URL` default (pointed at a specific Yandex Cloud Function) | `app/build.gradle.kts` | Placeholder `"https://example.invalid/replace-with-your-endpoint"`. |
-| `CORS_TG_BOT` default (`wl_cors_bot`) | `app/build.gradle.kts` | Placeholder `"REPLACE_WITH_TELEGRAM_BOT_USERNAME"`. Low-sensitivity, but pulled out so a fork doesn't accidentally talk to the original bot. |
-| `debug.keystore` (committed binary keystore) | repo root | Deleted. The debug build type now relies on Android Gradle Plugin's own auto-generated `~/.android/debug.keystore` (standard `android`/`android` credentials) — nothing to commit. |
-| `local.properties` (machine-specific, contained `sdk.dir`) | repo root | Deleted from the copy; it's gitignored and regenerated automatically by Android Studio / Gradle on first sync. |
-| `.claude/` local settings | repo root | Deleted; added to `.gitignore` so it won't come back. |
-
-## How to configure your own values
+No value below has a working default: the app must be told which backend, which
+shared secret and which Telegram bot to use before it can do anything real.
 
 Set each value either as an **environment variable** (good for CI) or as a key
 in a local, gitignored **`local.properties`** file at the repo root (good for
@@ -25,41 +11,94 @@ day-to-day dev in Android Studio). Environment variables take priority.
 # local.properties (create this file yourself — it's gitignored)
 sdk.dir=/path/to/your/Android/sdk
 
-CORS_BASE_URL=https://your-backend.example.com
-CORS_APP_TOKEN=your-shared-secret-matching-server-WB_APP_TOKEN
-CORS_TG_BOT=your_telegram_bot_username
+PC_BASE_URL=https://functions.yandexcloud.net/<function-id>
+PC_APP_TOKEN=<shared secret matching the server's APP_TOKEN>
+PC_TG_BOT=prometheus_connect_auth_bot
+PC_CALLBACK_HOST=auth.prometheus.info.gf
 ```
 
 or equivalently:
 
 ```bash
-export CORS_BASE_URL="https://your-backend.example.com"
-export CORS_APP_TOKEN="your-shared-secret-matching-server-WB_APP_TOKEN"
-export CORS_TG_BOT="your_telegram_bot_username"
+export PC_BASE_URL="https://functions.yandexcloud.net/<function-id>"
+export PC_APP_TOKEN="<shared secret matching the server's APP_TOKEN>"
+export PC_TG_BOT="prometheus_connect_auth_bot"
+export PC_CALLBACK_HOST="auth.prometheus.info.gf"
 ```
 
 These are read in `app/build.gradle.kts` and exposed to the app via
-`BuildConfig.CORS_BASE_URL`, `BuildConfig.CORS_APP_TOKEN`, `BuildConfig.CORS_TG_BOT`.
+`BuildConfig.PC_BASE_URL`, `BuildConfig.PC_APP_TOKEN`, `BuildConfig.PC_TG_BOT`
+and `BuildConfig.PC_CALLBACK_HOST`.
 
-If `CORS_APP_TOKEN` is left unset, the app builds and runs, but `CorsClient.isConfigured`
-is `false` and calls to the instance-creation API will fail — this is intentional,
-so an unconfigured build doesn't silently share a real secret.
+If `PC_APP_TOKEN` is left unset, the app builds and runs, but
+`CorsClient.isConfigured` is `false` and calls to the instance-creation API will
+fail — this is intentional, so an unconfigured build doesn't silently share a
+real secret.
+
+## Why the base URL is a Yandex Cloud Function
+
+`PC_BASE_URL` points at a Cloud Function proxy, not at the backend directly. On
+a strict RU mobile whitelist tariff nothing resolves except a curated domain
+list, and `functions.yandexcloud.net` is on it while our own domain is not — so
+the very first call, the one that creates the tunnel, has to go through the
+function. `CorsClient` detects that host and switches to the proxy calling
+convention automatically (path in the `__path` query parameter, session token in
+`X-Prometheus-Session-Token`). Pointing `PC_BASE_URL` straight at
+`https://auth.prometheus.info.gf` also works and uses normal REST conventions —
+useful for testing over a connection that can already reach it.
 
 ## Telegram App Link host
 
-`TelegramAuth.CALLBACK_HOST` (`beta.cors-fox.cc`) and the matching
-`AndroidManifest.xml` intent-filter host are **not** wired to `CORS_BASE_URL` —
-they must match whatever host your Telegram bot's WebApp actually redirects to
-(see the comment in `TelegramAuth.kt`). If you stand up your own bot/backend,
-update both the manifest's `android:host` and `CALLBACK_HOST` to your own
-verified HTTPS domain.
+`PC_CALLBACK_HOST` fills **both** `TelegramAuth.CALLBACK_HOST` and the
+`AndroidManifest.xml` intent-filter host, so the two cannot drift apart. It must
+be the host your Telegram bot's Mini App actually redirects to, and that host
+must serve a `/.well-known/assetlinks.json` naming this app's package and its
+release signing certificate — otherwise Android will not intercept the callback
+locally and the sign-in flow silently falls back to opening a web page.
 
 ## Release signing
 
-The `release` build type currently reuses the `debug` signing config as a
-placeholder (see the comment in `app/build.gradle.kts`). Before shipping a real
-release build, generate your own upload/release keystore
-(`keytool -genkey -v -keystore release.keystore -alias release -keyalg RSA -keysize 2048 -validity 10000`),
-keep it out of git, and add a proper `signingConfigs { create("release") { ... } }`
-block sourcing its store/key passwords from environment variables or
-`local.properties` the same way as above.
+Generate a keystore and keep it out of git:
+
+```bash
+keytool -genkey -v -keystore prometheus-connect-release.jks \
+        -alias prometheus -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Then point the build at it (env vars or `local.properties`):
+
+```properties
+PC_KEYSTORE_FILE=/absolute/path/to/prometheus-connect-release.jks
+PC_KEYSTORE_PASSWORD=...
+PC_KEY_ALIAS=prometheus
+PC_KEY_PASSWORD=...
+```
+
+With these set, `./gradlew assembleRelease` signs with the release key. Without
+them the build still succeeds but falls back to the debug key and logs a
+warning — such an APK will **not** pass App Link verification.
+
+After the first release build, read the certificate fingerprint and put it in
+`assetlinks.json` on the callback host:
+
+```bash
+keytool -list -v -keystore prometheus-connect-release.jks -alias prometheus \
+  | grep 'SHA256:'
+```
+
+```json
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "gf.info.prometheus.connect",
+    "sha256_cert_fingerprints": ["<the SHA256 from above>"]
+  }
+}]
+```
+
+## Upstream
+
+This is a fork of [CorsacTheFox/cors.connect-app](https://github.com/CorsacTheFox/cors.connect-app),
+itself a fork of [kulikov0/whitelist-bypass](https://github.com/kulikov0/whitelist-bypass).
+Upstream history is preserved and reachable via the `upstream` remote.

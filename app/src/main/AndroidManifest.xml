@@ -51,7 +51,7 @@
 
                 <data
                     android:scheme="https"
-                    android:host="beta.cors-fox.cc"
+                    android:host="${pcCallbackHost}"
                     android:pathPrefix="/tginit"
                     tools:ignore="Spelling" />
             </intent-filter>

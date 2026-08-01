@@ -145,8 +145,8 @@ object Prefs {
      * by the manifest intent-filter (see [cc.cors.connect.cors.TelegramAuth]).
      */
     var corsBaseUrl: String
-        get() = prefs.getString(PrefsKeys.CORS_BASE_URL, BuildConfig.CORS_BASE_URL)
-            ?.takeIf { it.isNotBlank() } ?: BuildConfig.CORS_BASE_URL
+        get() = prefs.getString(PrefsKeys.CORS_BASE_URL, BuildConfig.PC_BASE_URL)
+            ?.takeIf { it.isNotBlank() } ?: BuildConfig.PC_BASE_URL
         set(value) = prefs.edit { putString(PrefsKeys.CORS_BASE_URL, value.trim().trimEnd('/')) }
 
     /** Telegram WebApp initData for the claim/login flow (replay window ~24h). */
