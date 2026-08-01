@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cors.Connect — dark blue brand palette -->
+    <color name="accent_emerald">#FF2D7FF9</color>
+    <color name="accent_emerald_soft">#1F2D7FF9</color>
+    <color name="warn_amber">#FFE0A93B</color>
+    <color name="error_red">#FFFF6B6B</color>
+    <color name="ink">#FFEAF1FB</color>
+    <color name="ink_2">#FFA6B6D6</color>
+    <color name="ink_3">#FF5F7196</color>
+    <color name="hair">#14EAF1FB</color>
+    <color name="hair_strong">#29EAF1FB</color>
+    <color name="panel_bg">#FF101A30</color>
+    <color name="panel_2">#FF16223C</color>
+    <color name="surface_bg">#FF0A1322</color>
+    <color name="scrim_white_24">#3DFFFFFF</color>
+</resources>
