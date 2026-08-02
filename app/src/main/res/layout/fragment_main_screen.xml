@@ -226,8 +226,12 @@
                 app:tint="@color/panel_bg" />
         </LinearLayout>
 
-        <!-- Explicit "Sign in with Telegram" — only shown when authorization
-             is required. The user must tap this; the app never auto-opens it. -->
+        <!-- Account state. ALWAYS visible, and always states which of the two
+             modes the user is in. It used to be a sign-in button that hid
+             itself once authorized, which meant "signed in" and "we haven't
+             asked yet" rendered identically — there was no way to tell whether
+             the running session was the free 5-minute one or an unlimited one.
+             Tapping it signs in when anonymous, and opens Settings when not. -->
         <LinearLayout
             android:id="@+id/corsSignInButton"
             android:layout_width="match_parent"
@@ -239,26 +243,44 @@
             android:focusable="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="14dp"
-            android:visibility="gone">
+            android:padding="14dp">
 
             <ImageView
+                android:id="@+id/corsAccountIcon"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:src="@drawable/ic_cors_mark"
                 app:tint="@color/accent_emerald" />
 
-            <TextView
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
-                android:text="@string/cors_signin_with_telegram"
-                android:textColor="@color/accent_emerald"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/corsAccountTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cors_acct_anon_title"
+                    android:textColor="@color/accent_emerald"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/corsAccountSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="monospace"
+                    android:text="@string/cors_acct_anon_sub_idle"
+                    android:textColor="@color/ink_2"
+                    android:textSize="10sp" />
+            </LinearLayout>
 
             <ImageView
+                android:id="@+id/corsAccountChevron"
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:layout_marginStart="8dp"

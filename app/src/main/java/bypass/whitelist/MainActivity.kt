@@ -370,7 +370,16 @@ class MainActivity :
 
     override fun onCorsConnectPressed() = startCorsConnect()
 
-    override fun onCorsSignInPressed() = signInWithTelegram()
+    override fun onCorsSignInPressed() {
+        // The card is now permanent, so it gets tapped in both states. Signing
+        // in again when already signed in would just bounce the user to
+        // Telegram for nothing; send them to the account section instead.
+        if (Prefs.corsSignedIn) {
+            selectNavTab(R.id.navSettings)
+        } else {
+            signInWithTelegram()
+        }
+    }
 
     // ---- Cors.Connect instance flow -------------------------------------
 
@@ -387,8 +396,7 @@ class MainActivity :
 
     fun signInWithTelegram() {
         if (TelegramAuth.startLogin(this)) {
-            appendLog("Cors.Connect: opening Telegram for authorization")
-            mainFragment()?.onCorsAuthRequired(false)
+            appendLog("Prometheus Connect: opening Telegram for authorization")
             mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_auth_required))
         } else {
             Toast.makeText(this, R.string.cors_toast_no_telegram, Toast.LENGTH_SHORT).show()
@@ -411,7 +419,13 @@ class MainActivity :
      */
     private fun refreshCorsAuthPrompt() {
         if (!corsClient.isConfigured) return
-        mainFragment()?.onCorsAuthRequired(!TelegramAuth.hasInitData)
+        // The card is always on screen, so this only has to restate what we
+        // already know about the account after a resume.
+        if (Prefs.corsSignedIn) {
+            mainFragment()?.onCorsSignedIn(Prefs.corsUsername)
+        } else {
+            mainFragment()?.onCorsAnonymous(0)
+        }
     }
 
     fun forgetCorsInstance() {
@@ -436,29 +450,32 @@ class MainActivity :
             }
         }
 
+        override fun onCorsAnonymous(ttlSeconds: Int) {
+            runOnUiThread { mainFragment()?.onCorsAnonymous(ttlSeconds) }
+        }
+
         override fun onCorsNeedsTelegram() {
             // Do NOT auto-open Telegram. The user must explicitly tap the
             // "Sign in with Telegram" button (Main screen CTA or Settings) to
             // authorize. Surface the required state and reveal the button.
             runOnUiThread {
                 mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_auth_required))
-                mainFragment()?.onCorsAuthRequired(true)
             }
         }
 
         override fun onCorsClaimed(username: String) {
-            appendLog("Cors.Connect: authorized as $username")
+            appendLog("Prometheus Connect: authorized as $username")
             runOnUiThread {
-                mainFragment()?.onCorsAuthRequired(false)
+                mainFragment()?.onCorsSignedIn(username)
                 mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_claimed, username))
                 settingsFragment()?.refresh()
             }
         }
 
         override fun onCorsFailed(message: String) {
-            appendLog("Cors.Connect: $message")
+            appendLog("Prometheus Connect: $message")
             runOnUiThread {
-                mainFragment()?.onCorsAuthRequired(false)
+                mainFragment()?.onCorsSessionEnded()
                 Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
             }
         }

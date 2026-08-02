@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Account card while the session is anonymous: amber, so the free 5-minute
+     state reads as "something is still expected of you" rather than as the
+     resting state. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/accent_emerald_soft">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/panel_2" />
+            <stroke android:width="1.5dp" android:color="@color/warn_amber" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+</ripple>
