@@ -381,7 +381,12 @@ class CorsInstanceController(
         // bearer-authenticated client API also works, but the app endpoint is
         // tolerant of either and the token is cleared post-claim anyway.
         val token = currentClaimToken
-        runCatching { client.stop(id, token) }
+        // Offer whichever credential this instance actually has: the claim
+        // token before it is claimed, the session token after. sessionToken is
+        // also read back from Prefs so a restarted process can still stop an
+        // instance it adopted.
+        val session = sessionToken.ifEmpty { Prefs.corsSessionToken }
+        runCatching { client.stop(id, token, session.takeIf { it.isNotEmpty() }) }
         Prefs.corsInstanceId = 0
         if (!token.isNullOrEmpty()) Prefs.corsClaimToken = ""
     }

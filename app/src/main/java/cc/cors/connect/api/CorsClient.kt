@@ -71,12 +71,19 @@ class CorsClient(
     fun getInstance(instanceId: Int): InstanceState =
         InstanceState.parse(request("GET", "/api/app/instances/$instanceId"))
 
-    fun stop(instanceId: Int, claimToken: String? = null) {
-        // Always send a JSON body for consistency; claim_token is omitted when
-        // stopping a post-claim instance.
+    /**
+     * Stops an instance and frees its slot on the fleet.
+     *
+     * Authorisation differs by lifecycle stage, and BOTH have to be offered:
+     * an unclaimed instance is proved by its claim_token, a claimed one by the
+     * session token. Sending only the claim_token — which is cleared the moment
+     * the instance is claimed — meant every signed-in disconnect was rejected
+     * 403 and the call sat there holding a slot until its lease ran out.
+     */
+    fun stop(instanceId: Int, claimToken: String? = null, sessionToken: String? = null) {
         val body = JSONObject()
         if (claimToken != null) body.put("claim_token", claimToken)
-        request("DELETE", "/api/app/instances/$instanceId", body)
+        request("DELETE", "/api/app/instances/$instanceId", body, bearer = sessionToken)
     }
 
     /**
