@@ -182,6 +182,12 @@
 
     <!-- Prometheus Connect service integration -->
     <string name="cors_connect_button">Connect to my instance</string>
+    <!-- The primary action reads differently depending on the account: without
+         a sign-in it hands out a free 5-minute tunnel, which "Connect to my
+         instance" misdescribes. -->
+    <string name="cors_connect_button_anon">Quick connect</string>
+    <string name="cors_connect_sub_anon">Free tunnel \u00b7 5 minutes, no sign-in</string>
+    <string name="cors_connect_sub_signed_in">Unlimited \u00b7 covered by your subscription</string>
     <string name="cors_connect_sub">Create a tunnel and connect</string>
     <string name="cors_status_unavailable">Service unavailable</string>
     <string name="cors_status_telegram_off">Telegram login is not configured on the server</string>

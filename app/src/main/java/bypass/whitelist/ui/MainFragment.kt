@@ -170,6 +170,23 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         tickHandler.postDelayed(tickRunnable, 1000L)
     }
 
+    /**
+     * Restates the stored account without touching a running countdown.
+     *
+     * Called on every resume — including the resume that happens on the way
+     * back from Telegram. Routing that through onCorsAnonymous() would zero the
+     * deadline and freeze the timer at "sessions limited to 5 minutes" exactly
+     * when the user most needs to see how long is left.
+     */
+    fun onCorsAccountRefreshed(signedIn: Boolean, username: String) {
+        corsSignedIn = signedIn
+        if (signedIn) {
+            corsUsername = username
+            anonExpiresAtMs = 0L
+        }
+        renderCorsAccount()
+    }
+
     /** No session is running any more; drop any countdown but keep the account. */
     fun onCorsSessionEnded() {
         anonExpiresAtMs = 0L

@@ -49,6 +49,8 @@ class MainFragmentView(private val root: View) {
     private val corsAccountTitle: TextView = root.findViewById(R.id.corsAccountTitle)
     private val corsAccountSub: TextView = root.findViewById(R.id.corsAccountSub)
     private val corsAccountChevron: ImageView = root.findViewById(R.id.corsAccountChevron)
+    private val corsConnectTitle: TextView = root.findViewById(R.id.corsConnectTitle)
+    private val corsConnectSub: TextView = root.findViewById(R.id.corsConnectSub)
 
     var onAddCallClicked: Callback? = null
     var onScanQrClicked: Callback? = null
@@ -126,6 +128,13 @@ class MainFragmentView(private val root: View) {
         expired: Boolean,
     ) {
         val context = root.context
+        // The primary action means something different in each state: without a
+        // sign-in it hands out the free 5-minute tunnel, and calling that
+        // "Connect to my instance" claims an instance the user does not have.
+        corsConnectTitle.setText(
+            if (signedIn) R.string.cors_connect_button else R.string.cors_connect_button_anon)
+        corsConnectSub.setText(
+            if (signedIn) R.string.cors_connect_sub_signed_in else R.string.cors_connect_sub_anon)
         if (signedIn) {
             val accent = ContextCompat.getColor(context, R.color.accent_emerald)
             corsSignInButton.setBackgroundResource(R.drawable.bg_cors_signin_button)

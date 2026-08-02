@@ -421,11 +421,7 @@ class MainActivity :
         if (!corsClient.isConfigured) return
         // The card is always on screen, so this only has to restate what we
         // already know about the account after a resume.
-        if (Prefs.corsSignedIn) {
-            mainFragment()?.onCorsSignedIn(Prefs.corsUsername)
-        } else {
-            mainFragment()?.onCorsAnonymous(0)
-        }
+        mainFragment()?.onCorsAccountRefreshed(Prefs.corsSignedIn, Prefs.corsUsername)
     }
 
     fun forgetCorsInstance() {
