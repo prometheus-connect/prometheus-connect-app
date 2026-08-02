@@ -46,6 +46,14 @@ class CorsInstanceController(
         fun onCorsStatus(text: String)
         /** Called on the main thread when the output_link is ready; the host should connect to it. */
         fun onCorsOutputReady(config: CallConfig)
+        /**
+         * Called on the main thread when the instance is running but unclaimed,
+         * with the seconds it has left. The UI needs this to say *which* kind of
+         * session is up — without it "connected" looks the same whether it lasts
+         * five minutes or indefinitely.
+         */
+        fun onCorsAnonymous(ttlSeconds: Int)
+
         /** Called on the main thread when Telegram login is required to complete the claim. */
         fun onCorsNeedsTelegram()
         /** Called on the main thread when the flow has succeeded (claimed). */
@@ -99,6 +107,10 @@ class CorsInstanceController(
                 // already-claimed instance: in both cases it returns a session
                 // token, so we record it and skip the manual /claim step.
                 val alreadyClaimed = created.token != null
+                if (!alreadyClaimed) {
+                    val ttl = created.tempTtlSeconds ?: 0
+                    post { host.onCorsAnonymous(ttl) }
+                }
                 if (alreadyClaimed) {
                     sessionToken = created.token!!
                     Prefs.corsSessionToken = created.token!!

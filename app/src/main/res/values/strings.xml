@@ -180,10 +180,10 @@
     <string name="activity_copy">Copy raw</string>
     <string name="activity_share">Share file</string>
 
-    <!-- Cors.Connect service integration -->
+    <!-- Prometheus Connect service integration -->
     <string name="cors_connect_button">Connect to my instance</string>
-    <string name="cors_connect_sub">Auto-create and authorize a Cors.Connect instance</string>
-    <string name="cors_status_unavailable">Cors.Connect service unavailable</string>
+    <string name="cors_connect_sub">Create a tunnel and connect</string>
+    <string name="cors_status_unavailable">Service unavailable</string>
     <string name="cors_status_telegram_off">Telegram login is not configured on the server</string>
     <string name="cors_status_creating">Creating instance…</string>
     <string name="cors_status_starting">Starting instance…</string>
@@ -194,19 +194,30 @@
     <string name="cors_status_failed">Instance failed: %1$s</string>
     <string name="cors_status_limited_5min">Session limited to 5 minutes (not authorized to extend)</string>
     <string name="cors_status_cap">Server busy, try again shortly</string>
-    <string name="cors_status_network">Cannot reach Cors.Connect service</string>
+    <string name="cors_status_network">Cannot reach the service</string>
     <string name="cors_status_disabled">App API disabled on the server</string>
     <string name="cors_status_token_missing">App token not configured</string>
     <string name="cors_signin_with_telegram">Sign in with Telegram</string>
-    <string name="cors_signin_sub">Opens the Cors.Connect bot to authorize this device</string>
+    <string name="cors_signin_sub">Opens the Telegram bot to authorize this device</string>
     <string name="cors_account">Account</string>
+
+    <!-- Persistent account card on the Main screen. It is always visible: the
+         previous behaviour only hid the sign-in button once authorized, which
+         made "signed in" and "not asked yet" look identical. -->
+    <string name="cors_acct_anon_title">Sign in with Telegram</string>
+    <string name="cors_acct_anon_sub_idle">Not signed in \u00b7 sessions limited to 5 minutes</string>
+    <string name="cors_acct_anon_sub_live">Not signed in \u00b7 this session ends in %1$s</string>
+    <string name="cors_acct_anon_sub_expired">Not signed in \u00b7 the 5-minute session has ended</string>
+    <string name="cors_acct_in_title">Signed in as %1$s</string>
+    <string name="cors_acct_in_sub">Subscription active \u00b7 session has no time limit</string>
+    <string name="cors_acct_checking">Checking your subscription\u2026</string>
     <string name="cors_account_signed_out">Not signed in</string>
     <string name="cors_forget_instance">Forget instance</string>
     <string name="cors_forget_instance_sub">Clears the stored instance and session</string>
     <string name="cors_base_url">Server</string>
-    <string name="cors_base_url_sub">Base URL of the Cors.Connect API</string>
+    <string name="cors_base_url_sub">Base URL of the Prometheus Connect API</string>
     <string name="cors_base_url_label">Server URL</string>
-    <string name="cors_section_service">Cors.Connect service</string>
+    <string name="cors_section_service">Prometheus Connect</string>
     <string name="cors_toast_instance_forgotten">Instance forgotten</string>
     <string name="cors_toast_signed_out">Signed out</string>
     <string name="cors_toast_no_telegram">Telegram app not found</string>

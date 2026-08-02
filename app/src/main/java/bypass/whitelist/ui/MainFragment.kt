@@ -26,10 +26,19 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     private var content: MainFragmentView? = null
     private var pendingStatus: VpnStatus? = null
     private var connectedSinceMs: Long = 0L
+
+    // Account state shown by the persistent card. Seeded from Prefs so a
+    // restart doesn't render as "not signed in" before the first callback.
+    private var corsSignedIn: Boolean = Prefs.corsSignedIn
+    private var corsUsername: String = Prefs.corsUsername
+    /** When the current anonymous session runs out; 0 when there isn't one. */
+    private var anonExpiresAtMs: Long = 0L
+
     private val tickHandler = Handler(Looper.getMainLooper())
     private val tickRunnable = object : Runnable {
         override fun run() {
             refreshStats()
+            renderCorsAccount()
             tickHandler.postDelayed(this, 1000L)
         }
     }
@@ -95,6 +104,7 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
 
         pendingStatus?.let { container.bindStatus(it) }
         pendingStatus = null
+        renderCorsAccount()
     }
 
     override fun onResume() {
@@ -102,7 +112,8 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         content?.bindCalls(Prefs.savedDestinations, Prefs.activeDestinationId)
         content?.bindHero(connected = isHostConnected(), status = hostStatus())
         content?.resumeAnimations()
-        if (isHostConnected()) {
+        renderCorsAccount()
+        if (isHostConnected() || anonExpiresAtMs > 0L) {
             tickHandler.removeCallbacks(tickRunnable)
             tickHandler.postDelayed(tickRunnable, 1000L)
         }
@@ -135,9 +146,55 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         content?.bindStatusText(text)
     }
 
-    /** Toggles the explicit "Sign in with Telegram" action on the Main screen. */
-    fun onCorsAuthRequired(required: Boolean) {
-        content?.setCorsSignInVisible(required)
+    /** The instance was claimed — the session is now unlimited. */
+    fun onCorsSignedIn(username: String) {
+        corsSignedIn = true
+        corsUsername = username
+        anonExpiresAtMs = 0L
+        renderCorsAccount()
+    }
+
+    /**
+     * An anonymous instance is running and will expire after [ttlSeconds].
+     * Passing a non-positive ttl just marks the session anonymous without a
+     * countdown (we know the state but not the deadline).
+     */
+    fun onCorsAnonymous(ttlSeconds: Int) {
+        corsSignedIn = false
+        anonExpiresAtMs =
+            if (ttlSeconds > 0) System.currentTimeMillis() + ttlSeconds * 1000L else 0L
+        renderCorsAccount()
+        // The countdown has to tick even before the tunnel reports connected,
+        // otherwise the remaining time sits frozen during the join.
+        tickHandler.removeCallbacks(tickRunnable)
+        tickHandler.postDelayed(tickRunnable, 1000L)
+    }
+
+    /** No session is running any more; drop any countdown but keep the account. */
+    fun onCorsSessionEnded() {
+        anonExpiresAtMs = 0L
+        renderCorsAccount()
+    }
+
+    private fun renderCorsAccount() {
+        val view = content ?: return
+        if (corsSignedIn) {
+            view.bindCorsAccount(true, corsUsername, remaining = null, expired = false)
+            return
+        }
+        val deadline = anonExpiresAtMs
+        if (deadline <= 0L) {
+            view.bindCorsAccount(false, "", remaining = null, expired = false)
+            return
+        }
+        val leftMs = deadline - System.currentTimeMillis()
+        if (leftMs <= 0L) {
+            view.bindCorsAccount(false, "", remaining = null, expired = true)
+            return
+        }
+        val totalSeconds = (leftMs / 1000L).toInt()
+        val formatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
+        view.bindCorsAccount(false, "", remaining = formatted, expired = false)
     }
 
     fun onConnectedChanged(connected: Boolean) {

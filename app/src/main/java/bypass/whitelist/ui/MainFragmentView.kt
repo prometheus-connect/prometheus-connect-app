@@ -10,6 +10,7 @@ import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import bypass.whitelist.R
 import bypass.whitelist.tunnel.CallConfig
 import bypass.whitelist.tunnel.VpnStatus
@@ -44,6 +45,10 @@ class MainFragmentView(private val root: View) {
     private val statMode: TextView = root.findViewById(R.id.statMode)
     private val corsConnectButton: View = root.findViewById(R.id.corsConnectButton)
     private val corsSignInButton: View = root.findViewById(R.id.corsSignInButton)
+    private val corsAccountIcon: ImageView = root.findViewById(R.id.corsAccountIcon)
+    private val corsAccountTitle: TextView = root.findViewById(R.id.corsAccountTitle)
+    private val corsAccountSub: TextView = root.findViewById(R.id.corsAccountSub)
+    private val corsAccountChevron: ImageView = root.findViewById(R.id.corsAccountChevron)
 
     var onAddCallClicked: Callback? = null
     var onScanQrClicked: Callback? = null
@@ -101,9 +106,48 @@ class MainFragmentView(private val root: View) {
         corsSignInButton.setOnClickListener { onCorsSignInClicked?.invoke() }
     }
 
-    /** Shows/hides the explicit "Sign in with Telegram" action on the Main screen. */
-    fun setCorsSignInVisible(visible: Boolean) {
-        corsSignInButton.visibility = if (visible) View.VISIBLE else View.GONE
+    /**
+     * Renders the persistent account card.
+     *
+     * The card is never hidden. Whichever state the user is in, this is the one
+     * place on the screen that says so — anonymous sessions are amber and carry
+     * their remaining time, an authorized one is blue and names the account.
+     *
+     * @param signedIn  true once the instance has been claimed
+     * @param username  account name to show when [signedIn]
+     * @param remaining human-readable time left, or null when there is no live
+     *                  anonymous session to count down
+     * @param expired   the anonymous session ran out
+     */
+    fun bindCorsAccount(
+        signedIn: Boolean,
+        username: String,
+        remaining: String?,
+        expired: Boolean,
+    ) {
+        val context = root.context
+        if (signedIn) {
+            val accent = ContextCompat.getColor(context, R.color.accent_emerald)
+            corsSignInButton.setBackgroundResource(R.drawable.bg_cors_signin_button)
+            corsAccountIcon.setColorFilter(accent)
+            corsAccountChevron.setColorFilter(accent)
+            corsAccountTitle.setTextColor(accent)
+            corsAccountTitle.text = context.getString(R.string.cors_acct_in_title, username)
+            corsAccountSub.text = context.getString(R.string.cors_acct_in_sub)
+        } else {
+            val warn = ContextCompat.getColor(context, R.color.warn_amber)
+            corsSignInButton.setBackgroundResource(R.drawable.bg_cors_account_attention)
+            corsAccountIcon.setColorFilter(warn)
+            corsAccountChevron.setColorFilter(warn)
+            corsAccountTitle.setTextColor(warn)
+            corsAccountTitle.text = context.getString(R.string.cors_acct_anon_title)
+            corsAccountSub.text = when {
+                expired -> context.getString(R.string.cors_acct_anon_sub_expired)
+                remaining != null -> context.getString(R.string.cors_acct_anon_sub_live, remaining)
+                else -> context.getString(R.string.cors_acct_anon_sub_idle)
+            }
+        }
+        corsSignInButton.clipToOutline = true
     }
 
     fun bindCalls(calls: List<CallConfig>, activeId: String) {
