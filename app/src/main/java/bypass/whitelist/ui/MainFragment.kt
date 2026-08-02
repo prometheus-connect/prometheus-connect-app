@@ -244,7 +244,12 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
             refreshStats()
             tickHandler.removeCallbacks(tickRunnable)
             tickHandler.postDelayed(tickRunnable, 1000L)
-        } else {
+        } else if (anonExpiresAtMs <= 0L) {
+            // Only stop when there is genuinely nothing left to update. The
+            // anonymous countdown starts when the instance is created, which is
+            // *before* the tunnel reports connected — stopping the ticker here
+            // unconditionally froze it at 5:00 for the whole join, which is
+            // exactly when the remaining time matters.
             tickHandler.removeCallbacks(tickRunnable)
         }
     }

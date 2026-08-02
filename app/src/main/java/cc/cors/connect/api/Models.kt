@@ -121,9 +121,9 @@ data class InstanceState(
     }
 }
 
-/** HTTP-level failure from the Cors.Connect service. */
+/** HTTP-level failure from the Prometheus Connect service. */
 class CorsException(
     val code: Int,
     val detail: String,
     cause: Throwable? = null,
-) : RuntimeException("Cors.Connect API error $code: $detail", cause)
+) : RuntimeException("Prometheus Connect API error $code: $detail", cause)

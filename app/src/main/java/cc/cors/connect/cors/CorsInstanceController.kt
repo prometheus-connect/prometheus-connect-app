@@ -14,7 +14,7 @@ import cc.cors.connect.api.CreateInstanceOut
 import cc.cors.connect.api.InstanceState
 
 /**
- * Orchestrates the Cors.Connect instance lifecycle as described in
+ * Orchestrates the Prometheus Connect instance lifecycle as described in
  * ANDROID_INTEGRATION.md §5:
  *
  *  1. health check

@@ -31,6 +31,16 @@ class CorsClient(
 
     fun health(): Health = Health.parse(request("GET", "/api/app/health"))
 
+    /**
+     * Creates (or reuses) an instance.
+     *
+     * Uses a much longer read timeout than everything else: the server spawns a
+     * headless browser to mint a real call link, which is anywhere from ~3 to
+     * ~25 seconds, occasionally more under load. With the default 15s the app
+     * gave up while the server was still working — the user saw "Cannot reach
+     * the service" and the successfully-created instance was orphaned, holding
+     * a slot on the fleet until it expired.
+     */
     fun createInstance(
         serviceId: Int? = null,
         telegramInitData: String? = null,
@@ -47,7 +57,8 @@ class CorsClient(
         val body = JSONObject()
         if (serviceId != null) body.put("service_id", serviceId)
         if (!telegramInitData.isNullOrEmpty()) body.put("telegram_init_data", telegramInitData)
-        return CreateInstanceOut.parse(request("POST", "/api/app/instances", body))
+        return CreateInstanceOut.parse(
+            request("POST", "/api/app/instances", body, timeoutMs = CREATE_TIMEOUT_MS))
     }
 
     fun claim(instanceId: Int, claimToken: String, telegramInitData: String): ClaimOut {
@@ -108,11 +119,12 @@ class CorsClient(
         path: String,
         body: JSONObject? = null,
         bearer: String? = null,
+        timeoutMs: Int = TIMEOUT_MS,
     ): JSONObject {
         val conn = (URL(buildRequestUrl(path)).openConnection() as HttpURLConnection).apply {
             requestMethod = method
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = timeoutMs
             setRequestProperty("X-App-Token", appToken)
             // Optional bearer (session token) for authenticated endpoints such
             // as the heartbeat. Empty/null is silently omitted.
@@ -194,6 +206,10 @@ class CorsClient(
 
     companion object {
         private const val TIMEOUT_MS = 15_000
+        /** Connecting is fast even when the answer is slow; only reads drag. */
+        private const val CONNECT_TIMEOUT_MS = 15_000
+        /** See [createInstance] — the server legitimately takes tens of seconds. */
+        private const val CREATE_TIMEOUT_MS = 90_000
         /** Yandex Cloud Functions direct-invocation host (no path routing). */
         private const val YANDEX_FUNCTIONS_HOST = "functions.yandexcloud.net"
         /** Query param carrying the real backend path when using a function proxy. */
