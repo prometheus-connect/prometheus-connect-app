@@ -127,7 +127,29 @@ object TelegramAuth {
         return openLink(context, "https://t.me/$bot?startapp=${Uri.encode(payload)}")
     }
 
-    /** Opens [link] in Telegram. Returns false if nothing can handle it. */
+    /**
+     * Opens the bot's Mini App, addressing the Telegram app itself.
+     *
+     * An `https://t.me/...` link is only *usually* handled by Telegram: if it
+     * is not registered as a verified handler, Android hands it to the browser
+     * instead — and by this point our own VPN is carrying the whole device, so
+     * the browser tries to pull a web page through a channel sized for a video
+     * call and simply hangs. `tg://` resolves to Telegram and nothing else.
+     * The https form stays as the fallback for when Telegram is not installed.
+     */
+    fun openMiniApp(context: Context, bot: String, appName: String, startParam: String,
+                    httpsFallback: String): Boolean {
+        val cleanBot = bot.trim().removePrefix("@")
+        if (cleanBot.isNotEmpty()) {
+            val direct = "tg://resolve?domain=${Uri.encode(cleanBot)}" +
+                    "&appname=${Uri.encode(appName)}" +
+                    "&startapp=${Uri.encode(startParam)}"
+            if (openLink(context, direct)) return true
+        }
+        return openLink(context, httpsFallback)
+    }
+
+    /** Opens [link]. Returns false if nothing can handle it. */
     fun openLink(context: Context, link: String): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
