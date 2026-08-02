@@ -6,9 +6,17 @@ plugins {
 }
 
 val versionMajor = 1
-val versionMinor = 1
-val versionPatch = 5
+val versionMinor = 0
+val versionPatch = 0
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
+
+// versionCode is deliberately NOT derived from the version name. Android
+// refuses to install a package whose versionCode is lower than the installed
+// one, and the pre-release test builds already shipped 1001005 as "1.1.5".
+// Deriving it would have produced 1000000 for this release and forced everyone
+// who tested to uninstall first. Keep it a plain monotonic counter: bump it by
+// one for every build that leaves this machine, whatever the version name says.
+val versionCodeCounter = 1001006
 
 // ---- Prometheus Connect service configuration --------------------------------
 // Values are resolved in this order: environment variable -> local.properties
@@ -66,7 +74,7 @@ android {
         applicationId = "gf.info.prometheus.connect"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1_000_000 * versionMajor + 1_000 * versionMinor + versionPatch + versionBuild
+        versionCode = versionCodeCounter + versionBuild
         versionName = "$versionMajor.$versionMinor.$versionPatch"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
