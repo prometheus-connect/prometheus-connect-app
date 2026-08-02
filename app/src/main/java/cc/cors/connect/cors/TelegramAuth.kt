@@ -114,16 +114,21 @@ object TelegramAuth {
         try { android.net.Uri.decode(s) } catch (_: Exception) { s }
 
     /**
-     * Opens the Cors.Connect bot in Telegram with a `startapp` payload.
+     * Opens the bot in Telegram with a `startapp` payload.
      * Returns false if no app can handle the t.me link.
      *
-     * The bot is expected to open a WebApp that ultimately navigates to
-     * `https://<host>/tginit?initdata=<URL-encoded initData>` (an HTTPS App Link
-     * the Android intent-filter intercepts).
+     * The Mini App does not navigate back here — it posts the signed initData
+     * to the backend against the one-time code carried in `startapp`, and the
+     * app collects it by polling. See CorsClient.loginStart/loginPoll for why
+     * the App Link callback this used to rely on cannot work.
      */
     fun startLogin(context: Context, payload: String = "login"): Boolean {
         val bot = botUsername.trim().removePrefix("@")
-        val link = "https://t.me/$bot?startapp=${Uri.encode(payload)}"
+        return openLink(context, "https://t.me/$bot?startapp=${Uri.encode(payload)}")
+    }
+
+    /** Opens [link] in Telegram. Returns false if nothing can handle it. */
+    fun openLink(context: Context, link: String): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }

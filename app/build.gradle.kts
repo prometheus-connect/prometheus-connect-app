@@ -6,8 +6,8 @@ plugins {
 }
 
 val versionMajor = 1
-val versionMinor = 0
-val versionPatch = 2
+val versionMinor = 1
+val versionPatch = 0
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 
 // ---- Prometheus Connect service configuration --------------------------------
