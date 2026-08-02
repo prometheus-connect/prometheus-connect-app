@@ -126,6 +126,7 @@ class MainFragmentView(private val root: View) {
         username: String,
         remaining: String?,
         expired: Boolean,
+        noSubscription: Boolean = false,
     ) {
         val context = root.context
         // The primary action means something different in each state: without a
@@ -151,6 +152,7 @@ class MainFragmentView(private val root: View) {
             corsAccountTitle.setTextColor(warn)
             corsAccountTitle.text = context.getString(R.string.cors_acct_anon_title)
             corsAccountSub.text = when {
+                noSubscription -> context.getString(R.string.cors_acct_no_subscription)
                 expired -> context.getString(R.string.cors_acct_anon_sub_expired)
                 remaining != null -> context.getString(R.string.cors_acct_anon_sub_live, remaining)
                 else -> context.getString(R.string.cors_acct_anon_sub_idle)

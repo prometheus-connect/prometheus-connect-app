@@ -33,6 +33,8 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     private var corsUsername: String = Prefs.corsUsername
     /** When the current anonymous session runs out; 0 when there isn't one. */
     private var anonExpiresAtMs: Long = 0L
+    /** Signed in to Telegram, but the account carries no active subscription. */
+    private var noSubscription: Boolean = false
 
     private val tickHandler = Handler(Looper.getMainLooper())
     private val tickRunnable = object : Runnable {
@@ -150,6 +152,7 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     fun onCorsSignedIn(username: String) {
         corsSignedIn = true
         corsUsername = username
+        noSubscription = false
         anonExpiresAtMs = 0L
         renderCorsAccount()
     }
@@ -187,6 +190,17 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         renderCorsAccount()
     }
 
+    /**
+     * Telegram identity confirmed, but the account has no active subscription.
+     * The card stays amber — the session really is still capped — but says why
+     * instead of asking the user to sign in again.
+     */
+    fun onCorsNoSubscription() {
+        corsSignedIn = false
+        noSubscription = true
+        renderCorsAccount()
+    }
+
     /** No session is running any more; drop any countdown but keep the account. */
     fun onCorsSessionEnded() {
         anonExpiresAtMs = 0L
@@ -196,22 +210,26 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     private fun renderCorsAccount() {
         val view = content ?: return
         if (corsSignedIn) {
-            view.bindCorsAccount(true, corsUsername, remaining = null, expired = false)
+            view.bindCorsAccount(true, corsUsername, remaining = null, expired = false,
+                noSubscription = false)
             return
         }
         val deadline = anonExpiresAtMs
         if (deadline <= 0L) {
-            view.bindCorsAccount(false, "", remaining = null, expired = false)
+            view.bindCorsAccount(false, "", remaining = null, expired = false,
+                noSubscription = noSubscription)
             return
         }
         val leftMs = deadline - System.currentTimeMillis()
         if (leftMs <= 0L) {
-            view.bindCorsAccount(false, "", remaining = null, expired = true)
+            view.bindCorsAccount(false, "", remaining = null, expired = true,
+                noSubscription = noSubscription)
             return
         }
         val totalSeconds = (leftMs / 1000L).toInt()
         val formatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
-        view.bindCorsAccount(false, "", remaining = formatted, expired = false)
+        view.bindCorsAccount(false, "", remaining = formatted, expired = false,
+            noSubscription = noSubscription)
     }
 
     fun onConnectedChanged(connected: Boolean) {

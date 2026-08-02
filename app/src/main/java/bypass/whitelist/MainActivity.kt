@@ -53,6 +53,7 @@ import bypass.whitelist.util.Prefs
 import bypass.whitelist.util.SocksAuth
 import bypass.whitelist.util.maskUrl
 import cc.cors.connect.api.CorsClient
+import cc.cors.connect.api.CorsException
 import cc.cors.connect.cors.CorsInstanceController
 import cc.cors.connect.cors.TelegramAuth
 import java.net.InetSocketAddress
@@ -96,6 +97,7 @@ class MainActivity :
     private var corsClient: CorsClient = CorsClient()
     private var corsController: CorsInstanceController? = null
     private var corsPendingOutput: CallConfig? = null
+    @Volatile private var loginPollThread: Thread? = null
     private var navPageChangeCallback: ViewPager2.OnPageChangeCallback? = null
     private var navScrollState: Int = ViewPager2.SCROLL_STATE_IDLE
     @Volatile private var resetInProgress: Boolean = false
@@ -370,6 +372,46 @@ class MainActivity :
 
     override fun onCorsConnectPressed() = startCorsConnect()
 
+    /**
+     * Called off the main thread once the Mini App has delivered initData.
+     *
+     * Resolving the account here (rather than only claiming) means the user
+     * gets a definite answer even with no instance running — signing in and
+     * still seeing "not signed in" was the whole complaint.
+     */
+    private fun onTelegramInitDataReceived(initData: String) {
+        TelegramAuth.storeInitData(initData)
+        val login = try {
+            corsClient.telegramLogin(initData)
+        } catch (e: CorsException) {
+            appendLog("Prometheus Connect: telegram login failed: ${e.detail}")
+            runOnUiThread {
+                mainFragment()?.onStatusTextChanged(getString(R.string.cors_login_failed, e.detail))
+            }
+            return
+        }
+        val eligible = login.role == "user"
+        if (eligible) {
+            Prefs.corsUsername = login.username
+            Prefs.corsSessionToken = login.token
+        }
+        appendLog("Prometheus Connect: signed in as ${login.username} (role=${login.role})")
+        runOnUiThread {
+            if (eligible) {
+                mainFragment()?.onCorsSignedIn(login.username)
+                mainFragment()?.onStatusTextChanged(
+                    getString(R.string.cors_status_claimed, login.username))
+            } else {
+                mainFragment()?.onCorsNoSubscription()
+                mainFragment()?.onStatusTextChanged(
+                    getString(R.string.cors_login_no_subscription, login.username))
+            }
+            settingsFragment()?.refresh()
+        }
+        // Lift the running instance out of its 5-minute window, if there is one.
+        if (eligible) corsController?.resumeClaim()
+    }
+
     override fun onCorsSignInPressed() {
         // The card is now permanent, so it gets tapped in both states. Signing
         // in again when already signed in would just bounce the user to
@@ -394,12 +436,62 @@ class MainActivity :
         appendLog("Cors.Connect: requesting instance")
     }
 
+    /**
+     * Runs the Telegram sign-in.
+     *
+     * The Mini App cannot hand initData back to us directly — Telegram renders
+     * it in a WebView, where Android never consults App Links, and its in-app
+     * browser rejects intent: URLs (ERR_UNKNOWN_URL_SCHEME). So we mint a
+     * one-time code, open the bot with it, and poll the backend until the Mini
+     * App has posted the signed initData against that code.
+     */
     fun signInWithTelegram() {
-        if (TelegramAuth.startLogin(this)) {
-            appendLog("Prometheus Connect: opening Telegram for authorization")
-            mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_auth_required))
-        } else {
-            Toast.makeText(this, R.string.cors_toast_no_telegram, Toast.LENGTH_SHORT).show()
+        if (loginPollThread?.isAlive == true) {
+            mainFragment()?.onStatusTextChanged(getString(R.string.cors_login_waiting))
+            return
+        }
+        mainFragment()?.onStatusTextChanged(getString(R.string.cors_login_opening))
+        loginPollThread = thread(name = "cors-login", isDaemon = true) {
+            val start = try {
+                corsClient.loginStart()
+            } catch (e: CorsException) {
+                appendLog("Prometheus Connect: login/start failed: ${e.detail}")
+                runOnUiThread {
+                    mainFragment()?.onStatusTextChanged(
+                        getString(R.string.cors_login_failed, e.detail))
+                }
+                return@thread
+            }
+
+            var opened = false
+            runOnUiThread {
+                opened = TelegramAuth.openLink(this@MainActivity, start.deeplink)
+                if (!opened) {
+                    Toast.makeText(this@MainActivity, R.string.cors_toast_no_telegram,
+                        Toast.LENGTH_SHORT).show()
+                } else {
+                    appendLog("Prometheus Connect: opened Telegram with login code")
+                    mainFragment()?.onStatusTextChanged(getString(R.string.cors_login_waiting))
+                }
+            }
+
+            val deadline = System.currentTimeMillis() + start.expiresIn * 1000L
+            while (System.currentTimeMillis() < deadline && !isDestroyed) {
+                try { Thread.sleep(LOGIN_POLL_INTERVAL_MS) } catch (_: InterruptedException) { return@thread }
+                val poll = try {
+                    corsClient.loginPoll(start.code)
+                } catch (e: CorsException) {
+                    // 404 means the code expired server-side; anything else is
+                    // transient (the tunnel rebinds every couple of minutes).
+                    if (e.code == 404) break else continue
+                }
+                if (!poll.ready) continue
+                onTelegramInitDataReceived(poll.initData)
+                return@thread
+            }
+            runOnUiThread {
+                mainFragment()?.onStatusTextChanged(getString(R.string.cors_login_timeout))
+            }
         }
     }
 
@@ -1059,6 +1151,7 @@ class MainActivity :
         private const val STATE_CURRENT_TAB_ID = "current_tab_id"
         private const val CALL_LINK = ""
         private const val TAB_MAIN = 0
+        private const val LOGIN_POLL_INTERVAL_MS = 2_000L
         private const val TAB_SETTINGS = 1
         private const val TAB_LOGS = 2
     }

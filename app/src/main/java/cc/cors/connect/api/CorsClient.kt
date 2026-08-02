@@ -79,6 +79,22 @@ class CorsClient(
             body = JSONObject(), bearer = sessionToken,
         ))
 
+    /**
+     * Mints a one-time code for the Telegram sign-in handoff.
+     *
+     * The Mini App posts the signed initData against this code and the app
+     * collects it with [loginPoll]. This replaces the old App Link callback,
+     * which could not work: Telegram renders the Mini App in a WebView, and
+     * Android never consults App Links for in-WebView navigation, while
+     * Telegram's in-app browser rejects intent: URLs outright.
+     */
+    fun loginStart(): LoginStart =
+        LoginStart.parse(request("POST", "/api/app/login/start", JSONObject()))
+
+    /** Returns the submitted initData once the Mini App has posted it. */
+    fun loginPoll(code: String): LoginPoll =
+        LoginPoll.parse(request("GET", "/api/app/login/poll?code=" + URLEncoder.encode(code, "UTF-8")))
+
     /** Standalone Telegram login — issues a session token for stored initData. */
     fun telegramLogin(initData: String): LoginOut {
         val body = JSONObject().put("initData", initData)
@@ -189,6 +205,28 @@ class CorsClient(
          * function's own SESSION_HEADER constant.
          */
         const val PROXY_BEARER_HEADER = "X-Prometheus-Session-Token"
+    }
+}
+
+/** Result of `/api/app/login/start`. */
+data class LoginStart(val code: String, val deeplink: String, val expiresIn: Int) {
+    companion object {
+        fun parse(o: JSONObject) = LoginStart(
+            code = o.optString("code"),
+            deeplink = o.optString("deeplink"),
+            expiresIn = o.optInt("expires_in", 600),
+        )
+    }
+}
+
+/** Result of `/api/app/login/poll`. */
+data class LoginPoll(val ready: Boolean, val initData: String, val username: String) {
+    companion object {
+        fun parse(o: JSONObject) = LoginPoll(
+            ready = o.optString("status") == "ready",
+            initData = o.optString("telegram_init_data"),
+            username = o.optString("username"),
+        )
     }
 }
 
