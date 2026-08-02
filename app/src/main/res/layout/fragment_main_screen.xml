@@ -166,7 +166,8 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Cors.Connect auto-instance action -->
+        <!-- Primary action: creates a tunnel. Its wording depends on the account —
+             see bindCorsAccount(). -->
         <LinearLayout
             android:id="@+id/corsConnectButton"
             android:layout_width="match_parent"
@@ -201,19 +202,21 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/corsConnectTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/cors_connect_button"
+                    android:text="@string/cors_connect_button_anon"
                     android:textColor="@color/panel_bg"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/corsConnectSub"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:fontFamily="monospace"
-                    android:text="@string/cors_connect_sub"
+                    android:text="@string/cors_connect_sub_anon"
                     android:textColor="@color/ink_2"
                     android:textSize="10sp" />
             </LinearLayout>
