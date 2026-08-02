@@ -473,7 +473,8 @@ class MainActivity :
 
             var opened = false
             runOnUiThread {
-                opened = TelegramAuth.openLink(this@MainActivity, start.deeplink)
+                opened = TelegramAuth.openMiniApp(
+                    this@MainActivity, start.bot, "login", start.code, start.deeplink)
                 if (!opened) {
                     Toast.makeText(this@MainActivity, R.string.cors_toast_no_telegram,
                         Toast.LENGTH_SHORT).show()

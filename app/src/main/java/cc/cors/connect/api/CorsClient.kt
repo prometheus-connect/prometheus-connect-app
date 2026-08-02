@@ -280,10 +280,16 @@ class CorsClient(
 }
 
 /** Result of `/api/app/login/start`. */
-data class LoginStart(val code: String, val deeplink: String, val expiresIn: Int) {
+data class LoginStart(
+    val code: String,
+    val bot: String,
+    val deeplink: String,
+    val expiresIn: Int,
+) {
     companion object {
         fun parse(o: JSONObject) = LoginStart(
             code = o.optString("code"),
+            bot = o.optString("bot"),
             deeplink = o.optString("deeplink"),
             expiresIn = o.optInt("expires_in", 600),
         )
