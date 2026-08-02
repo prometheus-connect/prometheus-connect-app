@@ -68,7 +68,7 @@
     <string name="hero_disconnect">Disconnect</string>
 
     <string name="status_headline_disconnected">Disconnected</string>
-    <string name="status_detail_no_calls">Add a call to get started</string>
+    <string name="status_detail_no_calls">Tap Connect to start</string>
     <string name="status_detail_pick_call">Pick a call and tap connect</string>
     <string name="status_headline_connecting">Connecting</string>
     <string name="status_headline_connected">Connected</string>
@@ -210,10 +210,10 @@
     <!-- Persistent account card on the Main screen. It is always visible: the
          previous behaviour only hid the sign-in button once authorized, which
          made "signed in" and "not asked yet" look identical. -->
-    <string name="cors_acct_anon_title">Sign in with Telegram</string>
-    <string name="cors_acct_anon_sub_idle">Not signed in \u00b7 sessions limited to 5 minutes</string>
-    <string name="cors_acct_anon_sub_live">Not signed in \u00b7 this session ends in %1$s</string>
-    <string name="cors_acct_anon_sub_expired">Not signed in \u00b7 the 5-minute session has ended</string>
+    <string name="cors_acct_anon_title">Not signed in</string>
+    <string name="cors_acct_anon_sub_idle">Connect signs you in \u00b7 without it, 5 minutes</string>
+    <string name="cors_acct_anon_sub_live">Free session \u00b7 ends in %1$s</string>
+    <string name="cors_acct_anon_sub_expired">The free 5-minute session has ended</string>
     <string name="cors_acct_in_title">Signed in as %1$s</string>
     <string name="cors_acct_in_sub">Subscription active \u00b7 session has no time limit</string>
     <string name="cors_acct_checking">Checking your subscription\u2026</string>
