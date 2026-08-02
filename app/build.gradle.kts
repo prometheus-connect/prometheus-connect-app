@@ -7,7 +7,7 @@ plugins {
 
 val versionMajor = 1
 val versionMinor = 1
-val versionPatch = 3
+val versionPatch = 4
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 
 // ---- Prometheus Connect service configuration --------------------------------
@@ -38,6 +38,12 @@ val pcAppToken: String = configValue("PC_APP_TOKEN", "PC_APP_TOKEN", "REPLACE_WI
 val pcTgBot: String = configValue("PC_TG_BOT", "PC_TG_BOT", "REPLACE_WITH_TELEGRAM_BOT_USERNAME")
 // Host serving the Mini App callback and the App Links assetlinks.json.
 val pcCallbackHost: String = configValue("PC_CALLBACK_HOST", "PC_CALLBACK_HOST", "auth.prometheus.info.gf")
+// Backend reached directly. Used only when the Cloud Function proxy itself is
+// broken — it cannot be the default, because on a strict whitelist tariff this
+// host does not resolve until a tunnel already exists.
+val pcFallbackBaseUrl: String =
+    configValue("PC_FALLBACK_BASE_URL", "PC_FALLBACK_BASE_URL", "https://auth.prometheus.info.gf")
+        .removeSuffix("/")
 
 // ---- Release signing ---------------------------------------------------------
 // The keystore lives outside the repo. Without it, a release build falls back
@@ -72,6 +78,7 @@ android {
         // one place so the manifest's App Link filter and TelegramAuth cannot
         // drift apart — a mismatch breaks the local interception silently.
         buildConfigField("String", "PC_CALLBACK_HOST", "\"$pcCallbackHost\"")
+        buildConfigField("String", "PC_FALLBACK_BASE_URL", "\"$pcFallbackBaseUrl\"")
         manifestPlaceholders["pcCallbackHost"] = pcCallbackHost
     }
 

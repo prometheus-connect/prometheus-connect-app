@@ -114,6 +114,19 @@ class CorsClient(
 
     // ---- plumbing --------------------------------------------------------
 
+    /**
+     * Performs the request, transparently falling back to the direct backend
+     * when the Cloud Function proxy itself is broken.
+     *
+     * The proxy has to be the default: on a strict whitelist tariff it is the
+     * only host that resolves before a tunnel exists, so pointing the app
+     * straight at our own domain would make first-connect impossible for the
+     * users this exists for. But when the proxy is down for reasons that have
+     * nothing to do with the network — its billing account lapsing, say — the
+     * app should not sit there failing while a perfectly reachable backend is
+     * one hop away. The switch lasts for the process only, so the proxy is
+     * retried on next launch and the app self-heals once it is fixed.
+     */
     private fun request(
         method: String,
         path: String,
@@ -121,7 +134,33 @@ class CorsClient(
         bearer: String? = null,
         timeoutMs: Int = TIMEOUT_MS,
     ): JSONObject {
-        val conn = (URL(buildRequestUrl(path)).openConnection() as HttpURLConnection).apply {
+        val base = if (fellBackToDirect) FALLBACK_BASE_URL else baseUrl
+        return try {
+            execute(base, method, path, body, bearer, timeoutMs)
+        } catch (e: CorsException) {
+            if (!shouldFallBack(base, e)) throw e
+            fellBackToDirect = true
+            execute(FALLBACK_BASE_URL, method, path, body, bearer, timeoutMs)
+        }
+    }
+
+    /** Only leave the proxy for platform-level failures, never for our own errors. */
+    private fun shouldFallBack(base: String, e: CorsException): Boolean {
+        if (FALLBACK_BASE_URL.isBlank()) return false
+        if (!isProxy(base) || base == FALLBACK_BASE_URL) return false
+        return e.code == 0 || e.fromPlatform
+    }
+
+    private fun execute(
+        base: String,
+        method: String,
+        path: String,
+        body: JSONObject? = null,
+        bearer: String? = null,
+        timeoutMs: Int = TIMEOUT_MS,
+    ): JSONObject {
+        val proxied = isProxy(base)
+        val conn = (URL(buildRequestUrl(base, path)).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = timeoutMs
@@ -141,7 +180,7 @@ class CorsClient(
             // translates it back to a normal "Authorization: Bearer" header
             // on the outbound request to the real backend.
             if (!bearer.isNullOrBlank()) {
-                if (isYandexFunctionProxy) {
+                if (proxied) {
                     setRequestProperty(PROXY_BEARER_HEADER, bearer)
                 } else {
                     setRequestProperty("Authorization", "Bearer $bearer")
@@ -162,8 +201,7 @@ class CorsClient(
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             val text = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() } ?: ""
             if (code !in 200..299) {
-                val detail = parseDetail(text)
-                throw CorsException(code, detail)
+                throw CorsException(code, parseDetail(text), fromPlatform = isPlatformError(text))
             }
             return if (text.isBlank()) JSONObject() else JSONObject(text)
         } catch (e: CorsException) {
@@ -188,17 +226,23 @@ class CorsClient(
      * its clean URL; the proxy forwards `__path` to the real backend. The HTTP
      * method, headers and body are sent unchanged in both cases.
      */
-    private fun buildRequestUrl(path: String): String {
-        if (!isYandexFunctionProxy) return baseUrl + path
+    private fun buildRequestUrl(base: String, path: String): String {
+        if (!isProxy(base)) return base + path
         val encoded = URLEncoder.encode(path, "UTF-8")
-        // baseUrl has no query string by construction; append cleanly.
-        return baseUrl + "?$PROXY_PATH_PARAM=$encoded"
+        // base has no query string by construction; append cleanly.
+        return base + "?$PROXY_PATH_PARAM=$encoded"
     }
 
-    private val isYandexFunctionProxy: Boolean by lazy {
-        runCatching { URL(baseUrl).host.equals(YANDEX_FUNCTIONS_HOST, ignoreCase = true) }
+    private fun isProxy(base: String): Boolean =
+        runCatching { URL(base).host.equals(YANDEX_FUNCTIONS_HOST, ignoreCase = true) }
             .getOrDefault(false)
-    }
+
+    /** Yandex answers with its own error envelope; ours always has "detail". */
+    private fun isPlatformError(text: String): Boolean =
+        runCatching {
+            val o = JSONObject(text)
+            !o.has("detail") && (o.has("errorType") || o.has("errorCode"))
+        }.getOrDefault(false)
 
     private fun parseDetail(text: String): String =
         try { JSONObject(text).optString("detail").ifEmpty { text.trim() } }
@@ -221,6 +265,10 @@ class CorsClient(
          * function's own SESSION_HEADER constant.
          */
         const val PROXY_BEARER_HEADER = "X-Prometheus-Session-Token"
+        /** Backend reached directly, used when the proxy itself is broken. */
+        private val FALLBACK_BASE_URL: String = BuildConfig.PC_FALLBACK_BASE_URL.trimEnd('/')
+        /** Process-wide: once the proxy is known bad, stop paying for its timeout. */
+        @Volatile private var fellBackToDirect: Boolean = false
     }
 }
 
