@@ -166,69 +166,6 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Primary action: creates a tunnel. Its wording depends on the account —
-             see bindCorsAccount(). -->
-        <LinearLayout
-            android:id="@+id/corsConnectButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:background="@drawable/bg_cors_connect_button"
-            android:baselineAligned="false"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="16dp">
-
-            <FrameLayout
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/bg_cors_icon_chip">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_cors_mark"
-                    app:tint="@color/panel_bg" />
-            </FrameLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/corsConnectTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/cors_connect_button_anon"
-                    android:textColor="@color/panel_bg"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/corsConnectSub"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:fontFamily="monospace"
-                    android:text="@string/cors_connect_sub_anon"
-                    android:textColor="@color/ink_2"
-                    android:textSize="10sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginStart="8dp"
-                android:src="@drawable/ic_chevron_right"
-                app:tint="@color/panel_bg" />
-        </LinearLayout>
-
         <!-- Account state. ALWAYS visible, and always states which of the two
              modes the user is in. It used to be a sign-in button that hid
              itself once authorized, which meant "signed in" and "we haven't

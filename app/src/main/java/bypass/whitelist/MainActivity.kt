@@ -98,6 +98,8 @@ class MainActivity :
     private var corsController: CorsInstanceController? = null
     private var corsPendingOutput: CallConfig? = null
     @Volatile private var loginPollThread: Thread? = null
+    /** Auto sign-in fires at most once per connect attempt. */
+    @Volatile private var autoLoginAttempted: Boolean = false
     private var navPageChangeCallback: ViewPager2.OnPageChangeCallback? = null
     private var navScrollState: Int = ViewPager2.SCROLL_STATE_IDLE
     @Volatile private var resetInProgress: Boolean = false
@@ -408,8 +410,13 @@ class MainActivity :
             }
             settingsFragment()?.refresh()
         }
-        // Lift the running instance out of its 5-minute window, if there is one.
-        if (eligible) corsController?.resumeClaim()
+        // Lift the running instance out of its 5-minute window, if there is
+        // one; if the sign-in happened before any tunnel existed, go straight
+        // on and build it, so one tap really does reach a working connection.
+        if (eligible) {
+            if (corsController != null) corsController?.resumeClaim()
+            else runOnUiThread { startCorsConnect() }
+        }
     }
 
     override fun onCorsSignInPressed() {
@@ -426,6 +433,7 @@ class MainActivity :
     // ---- Prometheus Connect instance flow -------------------------------------
 
     fun startCorsConnect() {
+        autoLoginAttempted = false
         if (resetInProgress) {
             appendLog("Waiting for previous session to stop before the Prometheus Connect flow")
             mainFragment()?.onStatusTextChanged("Stopping previous session...")
@@ -553,11 +561,17 @@ class MainActivity :
         }
 
         override fun onCorsNeedsTelegram() {
-            // Do NOT auto-open Telegram. The user must explicitly tap the
-            // "Sign in with Telegram" button (Main screen CTA or Settings) to
-            // authorize. Surface the required state and reveal the button.
+            // The tunnel is up but the instance is unclaimed, so Telegram is
+            // reachable now and was not a moment ago. Carry on into the sign-in
+            // by ourselves — that is the whole point of the single button. The
+            // guard keeps a failing login from reopening Telegram in a loop;
+            // it is cleared on each new connect.
             runOnUiThread {
                 mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_auth_required))
+                if (!autoLoginAttempted) {
+                    autoLoginAttempted = true
+                    signInWithTelegram()
+                }
             }
         }
 

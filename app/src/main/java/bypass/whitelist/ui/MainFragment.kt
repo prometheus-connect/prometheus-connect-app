@@ -66,9 +66,6 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         container.onAddCallClicked = {
             AddDestinationSheet.show(parentFragmentManager)
         }
-        container.onCorsConnectClicked = {
-            host()?.onCorsConnectPressed()
-        }
         container.onCorsSignInClicked = {
             host()?.onCorsSignInPressed()
         }
@@ -86,9 +83,16 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
             if (isHostConnected() || isHostConnecting()) {
                 host()?.onDisconnectPressed()
             } else {
+                // One button for the whole thing. With a saved call it joins
+                // that; otherwise it runs the Prometheus flow, which creates a
+                // tunnel and — if nobody is signed in — walks through the
+                // Telegram sign-in on its own. Before this, the hero did
+                // nothing at all until you had saved a call by hand.
                 val active = Prefs.activeDestination
                 if (active != null) {
                     host()?.onConnectPressed(active)
+                } else {
+                    host()?.onCorsConnectPressed()
                 }
             }
         }
