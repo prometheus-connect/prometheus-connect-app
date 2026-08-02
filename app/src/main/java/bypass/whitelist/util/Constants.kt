@@ -73,7 +73,7 @@ object PrefsKeys {
     const val ACTIVE_DESTINATION_ID = "active_destination_id"
     const val THEME_MODE = "theme_mode"
 
-    // Cors.Connect service
+    // Prometheus Connect service
     const val CORS_BASE_URL = "cors_base_url"
     const val CORS_TG_INIT_DATA = "cors_tg_init_data"
     const val CORS_INSTANCE_ID = "cors_instance_id"
@@ -83,8 +83,10 @@ object PrefsKeys {
 }
 
 object VP8Defaults {
-    const val FPS = 24
-    const val BATCH = 30
+    // Measured sweet spot for the Telemost joiner: pushing either value higher
+    // does not raise throughput and makes the call less stable.
+    const val FPS = 30
+    const val BATCH = 90
 }
 
 const val BLANK_URL = "about:blank"

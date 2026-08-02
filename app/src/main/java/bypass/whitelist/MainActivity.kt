@@ -423,17 +423,17 @@ class MainActivity :
         }
     }
 
-    // ---- Cors.Connect instance flow -------------------------------------
+    // ---- Prometheus Connect instance flow -------------------------------------
 
     fun startCorsConnect() {
         if (resetInProgress) {
-            appendLog("Waiting for previous session to stop before Cors.Connect connect")
+            appendLog("Waiting for previous session to stop before the Prometheus Connect flow")
             mainFragment()?.onStatusTextChanged("Stopping previous session...")
             return
         }
         corsController?.stop()
         corsController = CorsInstanceController(applicationContext, corsClient, corsHost).also { it.start() }
-        appendLog("Cors.Connect: requesting instance")
+        appendLog("Prometheus Connect: requesting instance")
     }
 
     /**
@@ -519,8 +519,18 @@ class MainActivity :
     fun forgetCorsInstance() {
         corsController?.stop()
         corsController = null
-        Prefs.forgetCorsInstance()
+        loginPollThread?.interrupt()
+        // Full sign-out, not just the instance: forgetCorsInstance() kept the
+        // cached Telegram initData, so the very next connect pre-claimed and
+        // signed the user straight back in. Nothing else in the app clears it.
+        Prefs.corsSignOut()
         settingsFragment()?.refresh()
+        // Prefs.forgetCorsInstance() drops the session AND the username, so the
+        // account card is stale the moment this returns. Refreshing only the
+        // settings screen left the main screen still saying "Signed in as ..."
+        // after the user had explicitly cleared exactly that.
+        mainFragment()?.onCorsAccountRefreshed(Prefs.corsSignedIn, Prefs.corsUsername)
+        mainFragment()?.onCorsSessionEnded()
         Toast.makeText(this, R.string.cors_toast_instance_forgotten, Toast.LENGTH_SHORT).show()
     }
 
@@ -603,10 +613,10 @@ class MainActivity :
 
     override fun onCorsBaseUrlChanged() {
         // corsClient captured the base URL at construction; rebuild it so the
-        // next Cors.Connect flow uses the newly configured server. An in-flight
+        // next Prometheus Connect flow uses the newly configured server. An in-flight
         // controller keeps its old client and finishes against the prior server.
         corsClient = CorsClient()
-        appendLog("Cors.Connect: server URL updated")
+        appendLog("Prometheus Connect: server URL updated")
     }
 
     override fun activityLogLines(): List<String> {
@@ -732,14 +742,14 @@ class MainActivity :
             intent.action = null
             val initData = TelegramAuth.extractInitData(data)
             if (initData == null) {
-                appendLog("Cors.Connect: Telegram callback carried no initData")
+                appendLog("Prometheus Connect: Telegram callback carried no initData")
                 Toast.makeText(this, R.string.cors_status_auth_required, Toast.LENGTH_LONG).show()
             } else if (!TelegramAuth.looksLikeInitData(initData)) {
-                appendLog("Cors.Connect: Telegram initData rejected (malformed)")
+                appendLog("Prometheus Connect: Telegram initData rejected (malformed)")
                 Toast.makeText(this, R.string.cors_status_auth_required, Toast.LENGTH_LONG).show()
             } else {
                 TelegramAuth.storeInitData(initData)
-                appendLog("Cors.Connect: received Telegram initData")
+                appendLog("Prometheus Connect: received Telegram initData")
                 mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_claiming))
                 settingsFragment()?.refresh()
                 // If a flow is in progress, resume its claim; otherwise the stored
@@ -1029,7 +1039,7 @@ class MainActivity :
         activeHeadlessController = null
         activeJoinUrl = ""
 
-        // Tell the server to stop the spawned Cors.Connect instance too.
+        // Tell the server to stop the spawned Prometheus Connect instance too.
         corsController?.stop()
         corsController = null
         corsPendingOutput = null

@@ -136,10 +136,10 @@ object Prefs {
         get() = prefs.getString(PrefsKeys.ACTIVE_DESTINATION_ID, "") ?: ""
         set(value) = prefs.edit { putString(PrefsKeys.ACTIVE_DESTINATION_ID, value) }
 
-    // ---- Cors.Connect service state -------------------------------------
+    // ---- Prometheus Connect service state -------------------------------------
 
     /**
-     * Base URL of the Cors.Connect instance API. Overridable at runtime from
+     * Base URL of the Prometheus Connect instance API. Overridable at runtime from
      * Settings; falls back to the build-time default (`CORS_BASE_URL`). Note the
      * Telegram App Link callback host is *not* derived from this — it is fixed
      * by the manifest intent-filter (see [cc.cors.connect.cors.TelegramAuth]).
@@ -245,7 +245,7 @@ object Prefs {
         }
     }
 
-    /** Clears the stored Cors.Connect instance + session (keeps Telegram initData). */
+    /** Clears the stored Prometheus Connect instance + session (keeps Telegram initData). */
     fun forgetCorsInstance() {
         prefs.edit {
             remove(PrefsKeys.CORS_INSTANCE_ID)
