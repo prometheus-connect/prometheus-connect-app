@@ -126,4 +126,12 @@ class CorsException(
     val code: Int,
     val detail: String,
     cause: Throwable? = null,
+    /**
+     * True when the error came from the Cloud Function platform rather than
+     * from our backend — the function being unreachable, or its billing
+     * account lapsing. Our backend always answers `{"detail": ...}`; Yandex
+     * answers `{"errorCode": ..., "errorType": ...}`. Only these justify
+     * falling back to the direct backend URL.
+     */
+    val fromPlatform: Boolean = false,
 ) : RuntimeException("Prometheus Connect API error $code: $detail", cause)
