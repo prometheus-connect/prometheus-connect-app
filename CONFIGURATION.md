@@ -99,6 +99,8 @@ keytool -list -v -keystore prometheus-connect-release.jks -alias prometheus \
 
 ## Upstream
 
-This is a fork of [CorsacTheFox/cors.connect-app](https://github.com/CorsacTheFox/cors.connect-app),
-itself a fork of [kulikov0/whitelist-bypass](https://github.com/kulikov0/whitelist-bypass).
-Upstream history is preserved and reachable via the `upstream` remote.
+Built on [kulikov0/whitelist-bypass](https://github.com/kulikov0/whitelist-bypass)
+by way of [CorsacTheFox/cors.connect-app](https://github.com/CorsacTheFox/cors.connect-app).
+Note that cors.connect-app is not a GitHub fork of whitelist-bypass — it is a
+separate repository carrying a copy of that code — so the fork graph does not
+show the real lineage. [THIRD-PARTY.md](THIRD-PARTY.md) does.
