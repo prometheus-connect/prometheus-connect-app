@@ -1,7 +1,5 @@
 package bypass.whitelist.ui
 
-import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
@@ -44,9 +42,11 @@ class SplitTunnelingAdapter(
         val checkbox = view.findViewById<CheckBox>(R.id.appCheckbox)
 
         iconView.setImageDrawable(item.icon)
+        // Colours come from the palette, not from the system's night mode: this
+        // app's day and night palettes are BOTH dark, so keying the label off
+        // UI_MODE_NIGHT painted it black on a dark blue row whenever the phone
+        // itself was in light mode.
         labelView.text = item.label
-        val isDark = (view.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        labelView.setTextColor(if (isDark) Color.WHITE else Color.BLACK)
         packageView.text = item.packageName
 
         val toggle = { checked: Boolean ->
