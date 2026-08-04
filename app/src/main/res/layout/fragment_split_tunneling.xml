@@ -198,8 +198,10 @@
                 android:layout_marginTop="8dp"
                 android:layout_weight="1"
                 android:choiceMode="multipleChoice"
+                android:clipToPadding="false"
                 android:divider="@color/hair"
-                android:dividerHeight="1dp" />
+                android:dividerHeight="1dp"
+                android:paddingBottom="24dp" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>
