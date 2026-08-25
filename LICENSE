@@ -3,7 +3,8 @@ licensed. The original notice is reproduced below verbatim, as MIT requires,
 and modifications made for Prometheus Connect are offered under the same terms.
 
 See THIRD-PARTY.md for the full provenance of every part of this repository,
-including one component whose licence is still unresolved.
+including one component that is used with its author's permission rather than
+under a public licence.
 
 ---------------------------------------------------------------------------
 Original work: https://github.com/kulikov0/whitelist-bypass

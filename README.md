@@ -71,5 +71,6 @@ which added the instance and Telegram-auth scaffolding. What is genuinely new
 here is the backend, the provisioning and the sign-in flow.
 
 [THIRD-PARTY.md](THIRD-PARTY.md) breaks down exactly which files came from
-where, and flags the one component whose licence is still unresolved.
+where, and flags the one component used with its author's permission rather
+than under a public licence.
 [LICENSE](LICENSE) carries the upstream MIT notice.

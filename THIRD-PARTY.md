@@ -11,7 +11,7 @@ licence file and that needed fixing rather than ignoring.
 | Tunnel engine | `app/src/main/jniLibs/*/librelay.so` | 13 MB per ABI | [kulikov0/whitelist-bypass](https://github.com/kulikov0/whitelist-bypass) | MIT |
 | Proxy plumbing | `app/libs/mobile.aar` | 18 MB | gomobile build over [go-gost](https://github.com/go-gost/gost) and friends | MIT |
 | Android app | `app/src/main/java/bypass/whitelist/**` | 46 files, ~6300 lines | [kulikov0/whitelist-bypass](https://github.com/kulikov0/whitelist-bypass) | MIT |
-| Instance + Telegram auth | `app/src/main/java/cc/cors/connect/**` | 5 files, ~1100 lines | [CorsacTheFox/cors.connect-app](https://github.com/CorsacTheFox/cors.connect-app) | **none stated — see below** |
+| Instance + Telegram auth | `app/src/main/java/cc/cors/connect/**` | 5 files, ~1100 lines | [CorsacTheFox/cors.connect-app](https://github.com/CorsacTheFox/cors.connect-app) | **none stated — used with the author's permission, see below** |
 | This fork's changes | across the above | ~800 lines changed | Prometheus Connect | MIT |
 
 Note the shape of that table: the Kotlin you see on the language bar is the
@@ -20,7 +20,7 @@ native libraries — `librelay.so` is a [pion](https://github.com/pion/webrtc)
 WebRTC stack, and `mobile.aar` carries a gomobile build of the proxy side. The
 Go sources are not in this repository; they live upstream.
 
-## The unresolved part
+## The part that is not MIT
 
 `CorsacTheFox/cors.connect-app` publishes **no licence file**. Under default
 copyright that leaves its original contributions — the `cc/cors/connect/**`
@@ -33,8 +33,11 @@ Two things follow:
   commit. MIT permits redistribution, including of binaries and inside closed
   products, on the single condition that the notice travels with the code. It
   now does, in `LICENSE`.
-- Permission for the `cc/cors/connect/**` layer is still outstanding. Until it
-  is granted, treat that package as used by courtesy rather than by right.
+- The `cc/cors/connect/**` layer is used **with the author's permission**,
+  given directly to this project's maintainer on 2026-08-25, before any binary
+  was published. That is a personal permission rather than a public licence:
+  it covers this fork and its releases, and it does **not** extend to anyone
+  else. If you want to reuse that package, ask its author — not us.
 
 If you are reading this because you maintain one of the upstreams and something
 here is wrong — attribution, licence, anything — please open an issue. It will
