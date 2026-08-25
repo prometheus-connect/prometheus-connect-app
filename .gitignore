@@ -14,5 +14,4 @@ local.properties
 *.jks
 
 # Per-machine tool config, not project config.
-.claude/settings.local.json
 .kotlin/
