@@ -6,8 +6,8 @@ plugins {
 }
 
 val versionMajor = 1
-val versionMinor = 0
-val versionPatch = 1
+val versionMinor = 2
+val versionPatch = 0
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 
 // versionCode is deliberately NOT derived from the version name. Android
@@ -16,7 +16,7 @@ val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 // Deriving it would have produced 1000000 for this release and forced everyone
 // who tested to uninstall first. Keep it a plain monotonic counter: bump it by
 // one for every build that leaves this machine, whatever the version name says.
-val versionCodeCounter = 1001010
+val versionCodeCounter = 1001012
 
 // ---- Prometheus Connect service configuration --------------------------------
 // Values are resolved in this order: environment variable -> local.properties
@@ -52,6 +52,12 @@ val pcCallbackHost: String = configValue("PC_CALLBACK_HOST", "PC_CALLBACK_HOST",
 val pcFallbackBaseUrl: String =
     configValue("PC_FALLBACK_BASE_URL", "PC_FALLBACK_BASE_URL", "https://auth.prometheus.info.gf")
         .removeSuffix("/")
+// Published Yandex Disk folder advertising the pre-minted call pool. Read
+// anonymously through cloud-api.yandex.net, which — unlike the minting API —
+// passes a strict whitelist tariff. This is the only bootstrap that works when
+// the operator is filtering; see PoolClient.
+val pcPoolPublicKey: String =
+    configValue("PC_POOL_PUBLIC_KEY", "PC_POOL_PUBLIC_KEY", "REPLACE_WITH_POOL_PUBLIC_KEY")
 
 // ---- Release signing ---------------------------------------------------------
 // The keystore lives outside the repo. Without it, a release build falls back
@@ -87,6 +93,7 @@ android {
         // drift apart — a mismatch breaks the local interception silently.
         buildConfigField("String", "PC_CALLBACK_HOST", "\"$pcCallbackHost\"")
         buildConfigField("String", "PC_FALLBACK_BASE_URL", "\"$pcFallbackBaseUrl\"")
+        buildConfigField("String", "PC_POOL_PUBLIC_KEY", "\"$pcPoolPublicKey\"")
         manifestPlaceholders["pcCallbackHost"] = pcCallbackHost
     }
 

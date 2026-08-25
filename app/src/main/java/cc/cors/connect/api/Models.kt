@@ -135,3 +135,30 @@ class CorsException(
      */
     val fromPlatform: Boolean = false,
 ) : RuntimeException("Prometheus Connect API error $code: $detail", cause)
+
+/**
+ * Result of `/api/app/pool/adopt`.
+ *
+ * [adopted] false is a normal outcome, not a failure: it means the server needs
+ * a Telegram identity before it can attach the call to anyone. [reason] says
+ * which; everything else is only present once adoption succeeded.
+ */
+data class AdoptOut(
+    val adopted: Boolean,
+    val reason: String,
+    val instanceId: Int,
+    val token: String?,
+    val username: String,
+    val tempTtlSeconds: Int,
+) {
+    companion object {
+        fun parse(o: JSONObject) = AdoptOut(
+            adopted = o.optBoolean("adopted"),
+            reason = o.optString("reason"),
+            instanceId = o.optInt("instance_id"),
+            token = o.optString("token").ifEmpty { null },
+            username = o.optString("username"),
+            tempTtlSeconds = o.optInt("temp_ttl_seconds"),
+        )
+    }
+}

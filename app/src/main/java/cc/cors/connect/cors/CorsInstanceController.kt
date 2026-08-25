@@ -12,6 +12,7 @@ import cc.cors.connect.api.CorsClient
 import cc.cors.connect.api.CorsException
 import cc.cors.connect.api.CreateInstanceOut
 import cc.cors.connect.api.InstanceState
+import cc.cors.connect.api.PoolClient
 
 /**
  * Orchestrates the Prometheus Connect instance lifecycle as described in
@@ -66,6 +67,8 @@ class CorsInstanceController(
     @Volatile private var stopped = false
     @Volatile private var currentInstanceId: Int = 0
     @Volatile private var currentClaimToken: String? = null
+    /** Set when this session bootstrapped off the public pool; drives adoption. */
+    @Volatile private var poolEntry: PoolClient.Entry? = null
 
     // ---- heartbeat (post-claim lifetime extension) ----------------------
     @Volatile private var sessionToken: String = ""
@@ -150,7 +153,10 @@ class CorsInstanceController(
                 }
             } catch (e: CorsException) {
                 when (e.code) {
-                    0 -> failRes("cors_status_network")
+                    // Unreachable is the normal case on a whitelist tariff, not an
+                    // error to report yet: the minting API lives in a rentable AS
+                    // that operators filter, so try the pool before giving up.
+                    0 -> if (!connectViaPool()) failRes("cors_status_network")
                     404 -> failRes("cors_status_disabled")
                     429 -> failRes("cors_status_cap")
                     else -> failDetail("cors_status_failed", e.detail)
@@ -161,9 +167,135 @@ class CorsInstanceController(
         }
     }
 
-    /** Resumes the claim step after Telegram initData has arrived. */
+    /**
+     * Last-resort bootstrap for a client whose network will not carry a request
+     * to our own API at all.
+     *
+     * Reads the published pool over cloud-api.yandex.net — a consumer Yandex
+     * host, which passes the whitelist where ours does not — and connects to the
+     * first advertised call. Returns false if there is no usable entry, leaving
+     * the caller to report the original network failure.
+     *
+     * The session is unclaimed here on purpose: the pool exists to get *a* tunnel
+     * up, and the subscription check happens afterwards over clean internet.
+     */
+    private fun connectViaPool(): Boolean {
+        val pool = PoolClient()
+        if (!pool.isConfigured) return false
+        status("cors_status_pool")
+        val entry = try {
+            pool.fetch().firstOrNull()
+        } catch (e: Exception) {
+            Log.w(TAG, "pool bootstrap failed: ${e.message}")
+            null
+        } ?: return false
+
+        Log.i(TAG, "pool bootstrap: ${entry.platform} ${entry.mode} ${entry.url}")
+        poolEntry = entry
+        val config = CallConfig.newWith(
+            name = resString("cors_instance_name"),
+            url = entry.url,
+        ).copy(tunnelMode = entry.mode)
+        post {
+            if (!stopped) {
+                host.onCorsStatus(resString("cors_status_ready"))
+                host.onCorsOutputReady(config)
+            }
+        }
+        bg { adoptWhenTunnelIsUp() }
+        return true
+    }
+
+    /**
+     * Turns the borrowed pool call into this user's own session.
+     *
+     * The pool got us a tunnel; now the API is reachable through it, so this is
+     * where entitlement is finally checked. Until it succeeds the server keeps
+     * the call on the five-minute anonymous window, so giving up here costs the
+     * user a short session, never a broken one.
+     */
+    private fun adoptWhenTunnelIsUp() {
+        val entry = poolEntry ?: return
+        if (entry.backendId.isEmpty()) {
+            Log.w(TAG, "pool entry has no backend id — staying anonymous")
+            return
+        }
+        if (!awaitApiThroughTunnel()) {
+            Log.w(TAG, "API never became reachable through the tunnel; staying anonymous")
+            return
+        }
+        tryAdopt()
+    }
+
+    /**
+     * Blocks until our own API answers, which only happens once the tunnel is
+     * actually carrying traffic — a far more honest readiness signal than any
+     * fixed delay, because the transport takes anywhere from a second to most
+     * of a minute to start moving payload.
+     */
+    private fun awaitApiThroughTunnel(): Boolean {
+        val deadline = System.currentTimeMillis() + ADOPT_WINDOW_MS
+        while (!stopped && System.currentTimeMillis() < deadline) {
+            try {
+                if (client.health().serviceAvailable) return true
+            } catch (_: Exception) {
+                // Expected while the tunnel is still coming up.
+            }
+            try {
+                Thread.sleep(ADOPT_POLL_MS)
+            } catch (_: InterruptedException) {
+                return false
+            }
+        }
+        return false
+    }
+
+    private fun tryAdopt() {
+        val entry = poolEntry ?: return
+        if (stopped) return
+        val initData = TelegramAuth.initData()
+        val out = try {
+            client.adoptPoolInstance(
+                backendId = entry.backendId,
+                outputLink = entry.url,
+                platform = entry.platform.id,
+                telegramInitData = initData.ifEmpty { null },
+            )
+        } catch (e: CorsException) {
+            // 403 is "no subscription" and is a real answer, not a fault: the
+            // anonymous window stands and the user is told why.
+            if (e.code == 403) post { host.onCorsFailed(e.detail) }
+            else Log.w(TAG, "adopt failed: ${e.code} ${e.detail}")
+            return
+        } catch (e: Exception) {
+            Log.w(TAG, "adopt failed: ${e.message}")
+            return
+        }
+
+        if (!out.adopted) {
+            if (out.reason == "telegram_required") post { host.onCorsNeedsTelegram() }
+            return
+        }
+        currentInstanceId = out.instanceId
+        Prefs.corsInstanceId = out.instanceId
+        out.token?.let {
+            sessionToken = it
+            Prefs.corsSessionToken = it
+        }
+        if (out.username.isNotEmpty()) Prefs.corsUsername = out.username
+        startHeartbeat()
+        post { host.onCorsClaimed(out.username) }
+    }
+
+    /**
+     * Resumes after Telegram initData has arrived.
+     *
+     * A pool session has no claim token to present — it is adopted by backend
+     * id instead — so it has to take the other path or the sign-in would appear
+     * to succeed and change nothing.
+     */
     fun resumeClaim() {
-        bg { tryClaim() }
+        bg { if (poolEntry != null) tryAdopt() else tryClaim() }
     }
 
     /**
@@ -421,6 +553,10 @@ class CorsInstanceController(
     companion object {
         private const val TAG = "CorsInstanceController"
         private const val POLL_INTERVAL_MS = 1_500L
+        /** How long to wait for the tunnel to start carrying traffic before
+         *  giving up on adoption and leaving the session anonymous. */
+        private const val ADOPT_WINDOW_MS = 90_000L
+        private const val ADOPT_POLL_MS = 3_000L
         private const val MAX_POLL_ATTEMPTS = 80  // ~2 min at 1.5s
 
         // Heartbeat cadence. Backend adds HEARTBEAT_EXT (300s) per beat; pinging

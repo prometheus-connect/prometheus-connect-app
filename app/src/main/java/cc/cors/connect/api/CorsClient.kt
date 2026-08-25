@@ -61,6 +61,33 @@ class CorsClient(
             request("POST", "/api/app/instances", body, timeoutMs = CREATE_TIMEOUT_MS))
     }
 
+    /**
+     * Takes over a call picked up from the public pool.
+     *
+     * The pool exists because a whitelist-bound client cannot reach this API at
+     * all until it has a tunnel; it bootstraps on a pre-minted call and calls
+     * this once traffic flows. Until it does, the server has already dropped
+     * that call to the anonymous window, so failing here is not dangerous —
+     * it just means the session stays short.
+     *
+     * [telegramInitData] may be null: the server then answers `adopted=false`
+     * with `reason="telegram_required"` instead of an error, which is the cue
+     * to run the sign-in and come back.
+     */
+    fun adoptPoolInstance(
+        backendId: String,
+        outputLink: String,
+        platform: String,
+        telegramInitData: String? = null,
+    ): AdoptOut {
+        val body = JSONObject()
+            .put("backend_id", backendId)
+            .put("output_link", outputLink)
+            .put("platform", platform)
+        if (!telegramInitData.isNullOrEmpty()) body.put("telegram_init_data", telegramInitData)
+        return AdoptOut.parse(request("POST", "/api/app/pool/adopt", body))
+    }
+
     fun claim(instanceId: Int, claimToken: String, telegramInitData: String): ClaimOut {
         val body = JSONObject()
             .put("telegram_init_data", telegramInitData)
