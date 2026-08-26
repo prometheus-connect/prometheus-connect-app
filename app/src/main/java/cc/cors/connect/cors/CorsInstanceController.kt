@@ -100,6 +100,8 @@ class CorsInstanceController(
                 // any still-live instance for this user (no duplicate), or creates
                 // + claims on our behalf. Without initData we get a 5-min temp +
                 // claim_token and must claim manually later.
+                // The ordinary path proves the network carries direct traffic.
+                Prefs.lastSessionUsedPool = false
                 val created = createInstanceResilient()
                 currentInstanceId = created.instanceId
                 currentClaimToken = created.claimToken
@@ -192,6 +194,10 @@ class CorsInstanceController(
 
         Log.i(TAG, "pool bootstrap: ${entry.platform} ${entry.mode} ${entry.url}")
         poolEntry = entry
+        // Reaching the pool at all means the API was unreachable, which is the
+        // signature of a filtered network — where "direct" reaches almost
+        // nothing. Split routing must stay out of the way on such a session.
+        Prefs.lastSessionUsedPool = true
         val config = CallConfig.newWith(
             name = resString("cors_instance_name"),
             url = entry.url,

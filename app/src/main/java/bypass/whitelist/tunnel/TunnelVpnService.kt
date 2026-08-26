@@ -19,6 +19,9 @@ import bypass.whitelist.R
 import bypass.whitelist.util.Callback
 import bypass.whitelist.util.DnsMode
 import bypass.whitelist.util.Prefs
+import bypass.whitelist.BuildConfig
+import bypass.whitelist.routing.RoutingSocksServer
+import bypass.whitelist.routing.RuleSet
 import bypass.whitelist.util.SocksAuth
 import bypass.whitelist.util.Vpn
 import androidbind.Androidbind
@@ -57,6 +60,7 @@ class TunnelVpnService : VpnService() {
     @Volatile internal var stopInProgress: Boolean = false
     private var vpnFd: ParcelFileDescriptor? = null
     private var tun2socksThread: Thread? = null
+    private var routingServer: RoutingSocksServer? = null
     @Volatile private var tunGeneration: Long = 0
 
     override fun onCreate() {
@@ -232,13 +236,19 @@ class TunnelVpnService : VpnService() {
         updateStatus(VpnStatus.TUNNEL_ACTIVE)
         val startGeneration = bumpTunGeneration()
 
+        // With split routing on, tun2socks talks to our router instead of the
+        // relay, and the router decides per connection. With it off the router
+        // is not started at all — tun2socks addresses the relay exactly as it
+        // always has, so the disabled state cannot behave differently.
+        val socksTarget = startRoutingIfEnabled()
+
         tun2socksThread = Thread {
             if (!isRunning || stopInProgress || !isTunGenerationCurrent(startGeneration)) {
                 closeRawFd(fd)
                 return@Thread
             }
             try {
-                Androidbind.startTun2Socks(fd.toLong(), Vpn.MTU.toLong(), Prefs.socksPort, SocksAuth.user, SocksAuth.pass)
+                Androidbind.startTun2Socks(fd.toLong(), Vpn.MTU.toLong(), socksTarget, SocksAuth.user, SocksAuth.pass)
             } catch (e: Exception) {
                 Log.e(TAG, "tun2socks error: ${e.message}")
                 isRunning = false
@@ -259,6 +269,39 @@ class TunnelVpnService : VpnService() {
         tunGeneration == generation
     }
 
+    /**
+     * Returns the port tun2socks should dial: the router's when split routing
+     * applies, the relay's otherwise.
+     */
+    private fun startRoutingIfEnabled(): Long {
+        if (!Prefs.splitRoutingUsable) return Prefs.socksPort
+        val rules = RuleSet.load(
+            applicationContext, BuildConfig.PC_ROUTING_PUBLIC_KEY, BuildConfig.PC_ROUTING_PROFILE)
+        if (rules.size == 0) {
+            // No rules means every destination would look "not blocked" and go
+            // direct — the exact opposite of what the user asked for. Carry on
+            // tunnelling everything until a rule set is actually available.
+            Log.w(TAG, "split routing requested but no rules available; tunnelling everything")
+            return Prefs.socksPort
+        }
+        val port = Prefs.socksPort.toInt() + 1
+        return try {
+            routingServer = RoutingSocksServer(
+                listenPort = port,
+                relayPort = Prefs.socksPort.toInt(),
+                user = SocksAuth.user,
+                pass = SocksAuth.pass,
+                rules = rules,
+                protect = { socket -> protect(socket) },
+            ).also { it.start() }
+            port.toLong()
+        } catch (e: Exception) {
+            Log.e(TAG, "routing server failed to start: ${e.message}; tunnelling everything")
+            routingServer = null
+            Prefs.socksPort
+        }
+    }
+
     private fun closeRawFd(fd: Int) {
         runCatching { ParcelFileDescriptor.adoptFd(fd).close() }
             .onFailure { Log.w(TAG, "Failed to close stale tun fd=$fd: ${it.message}") }
@@ -268,6 +311,9 @@ class TunnelVpnService : VpnService() {
         stopInProgress = false
         isRunning = false
         startInProgress = false
+        // Free the listening port before the next connect tries to bind it.
+        routingServer?.stop()
+        routingServer = null
         runCatching {
             @Suppress("DEPRECATION")
             stopForeground(true)

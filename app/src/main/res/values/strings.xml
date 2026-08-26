@@ -201,6 +201,8 @@
     <string name="cors_status_limited_5min">Session limited to 5 minutes (not authorized to extend)</string>
     <string name="cors_status_cap">Server busy, try again shortly</string>
     <string name="cors_status_network">Cannot reach the service</string>
+    <string name="settings_row_split_routing">Split routing</string>
+    <string name="settings_row_split_routing_sub">Send only blocked sites through the tunnel. Ignored on networks where direct traffic goes nowhere.</string>
     <string name="cors_status_pool">Service unreachable — using a standby call</string>
     <string name="cors_status_disabled">App API disabled on the server</string>
     <string name="cors_status_token_missing">App token not configured</string>

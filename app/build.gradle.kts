@@ -6,8 +6,8 @@ plugins {
 }
 
 val versionMajor = 1
-val versionMinor = 2
-val versionPatch = 1
+val versionMinor = 3
+val versionPatch = 0
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 
 // versionCode is deliberately NOT derived from the version name. Android
@@ -16,7 +16,7 @@ val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 // Deriving it would have produced 1000000 for this release and forced everyone
 // who tested to uninstall first. Keep it a plain monotonic counter: bump it by
 // one for every build that leaves this machine, whatever the version name says.
-val versionCodeCounter = 1001013
+val versionCodeCounter = 1001014
 
 // ---- Prometheus Connect service configuration --------------------------------
 // Values are resolved in this order: environment variable -> local.properties
@@ -58,6 +58,13 @@ val pcFallbackBaseUrl: String =
 // the operator is filtering; see PoolClient.
 val pcPoolPublicKey: String =
     configValue("PC_POOL_PUBLIC_KEY", "PC_POOL_PUBLIC_KEY", "REPLACE_WITH_POOL_PUBLIC_KEY")
+// Published rule blob for split routing, and which profile it holds. Served
+// from the same whitelist-reachable Disk as the pool, compiled server-side to
+// ~540 KB from upstream lists that would otherwise be 88 MB.
+val pcRoutingPublicKey: String =
+    configValue("PC_ROUTING_PUBLIC_KEY", "PC_ROUTING_PUBLIC_KEY", "REPLACE_WITH_ROUTING_PUBLIC_KEY")
+val pcRoutingProfile: String =
+    configValue("PC_ROUTING_PROFILE", "PC_ROUTING_PROFILE", "ru-blocked")
 
 // ---- Release signing ---------------------------------------------------------
 // The keystore lives outside the repo. Without it, a release build falls back
@@ -94,6 +101,8 @@ android {
         buildConfigField("String", "PC_CALLBACK_HOST", "\"$pcCallbackHost\"")
         buildConfigField("String", "PC_FALLBACK_BASE_URL", "\"$pcFallbackBaseUrl\"")
         buildConfigField("String", "PC_POOL_PUBLIC_KEY", "\"$pcPoolPublicKey\"")
+        buildConfigField("String", "PC_ROUTING_PUBLIC_KEY", "\"$pcRoutingPublicKey\"")
+        buildConfigField("String", "PC_ROUTING_PROFILE", "\"$pcRoutingProfile\"")
         manifestPlaceholders["pcCallbackHost"] = pcCallbackHost
     }
 

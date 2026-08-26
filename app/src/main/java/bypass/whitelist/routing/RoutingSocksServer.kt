@@ -1,0 +1,255 @@
+package bypass.whitelist.routing
+
+import android.util.Log
+import java.io.DataInputStream
+import java.io.InputStream
+import java.io.OutputStream
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.ServerSocket
+import java.net.Socket
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
+
+/**
+ * A SOCKS5 front end that decides, per connection, whether it takes the tunnel.
+ *
+ * It sits between tun2socks and the relay:
+ *
+ *     tun2socks -> RoutingSocksServer -+- matched  -> relay SOCKS5 -> tunnel
+ *                                      \- unmatched -> protected socket -> direct
+ *
+ * The split cannot be done with VpnService routes: the rule set is ~110 000
+ * prefixes and Android's route table is budgeted in thousands. Doing it here
+ * costs one hash lookup per connection and nothing per packet.
+ *
+ * **TCP only.** A UDP ASSOCIATE request is passed to the relay untouched, so UDP
+ * — DNS and QUIC included — always takes the tunnel. That is the conservative
+ * side to err on: DNS in the tunnel cannot leak which sites are being resolved,
+ * and QUIC falls back to TCP often enough that the cost is small. Splitting UDP
+ * would mean relaying datagrams by hand for no benefit worth the bug surface.
+ */
+class RoutingSocksServer(
+    private val listenPort: Int,
+    private val relayPort: Int,
+    private val user: String,
+    private val pass: String,
+    private val rules: RuleSet,
+    /** VpnService.protect — without it a direct socket loops back into the tunnel. */
+    private val protect: (Socket) -> Boolean,
+) {
+
+    private val running = AtomicBoolean(false)
+    private var server: ServerSocket? = null
+    private val pool = Executors.newCachedThreadPool()
+
+    fun start() {
+        if (!running.compareAndSet(false, true)) return
+        val socket = ServerSocket()
+        socket.reuseAddress = true
+        socket.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), listenPort))
+        server = socket
+        Log.i(TAG, "routing socks on 127.0.0.1:$listenPort -> relay :$relayPort, ${rules.size} prefixes")
+        thread(name = "routing-socks", isDaemon = true) {
+            while (running.get()) {
+                val client = try {
+                    socket.accept()
+                } catch (e: Exception) {
+                    if (running.get()) Log.w(TAG, "accept failed: ${e.message}")
+                    break
+                }
+                pool.execute { runCatching { handle(client) }.onFailure { close(client) } }
+            }
+        }
+    }
+
+    fun stop() {
+        if (!running.compareAndSet(true, false)) return
+        runCatching { server?.close() }
+        pool.shutdownNow()
+    }
+
+    // ---- one connection ---------------------------------------------------
+
+    private fun handle(client: Socket) {
+        client.tcpNoDelay = true
+        val input = DataInputStream(client.getInputStream().buffered())
+        val output = client.getOutputStream()
+
+        if (!greet(input, output)) { close(client); return }
+
+        // Request: VER CMD RSV ATYP ADDR PORT
+        val version = input.read()
+        val command = input.read()
+        input.read() // reserved
+        if (version != 5) { close(client); return }
+        val atyp = input.read()
+        val (host, rawAddr) = readAddress(input, atyp) ?: run { close(client); return }
+        val port = (input.read() shl 8) or input.read()
+
+        if (command != CMD_CONNECT) {
+            // UDP associate and bind go to the relay untouched; see the class note.
+            proxyThrough(client, input, output, atyp, rawAddr, host, port, command)
+            return
+        }
+
+        val target = resolve(host)
+        val viaTunnel = target == null || rules.matches(target)
+        if (viaTunnel) {
+            proxyThrough(client, input, output, atyp, rawAddr, host, port, command)
+        } else {
+            direct(client, output, target, port)
+        }
+    }
+
+    /**
+     * A destination we cannot resolve is sent through the tunnel rather than
+     * direct: on a filtered network the resolver itself may be what is broken,
+     * and guessing "direct" there would strand the connection entirely.
+     */
+    private fun resolve(host: String): InetAddress? =
+        runCatching { InetAddress.getByName(host) }.getOrNull()
+
+    private fun greet(input: DataInputStream, output: OutputStream): Boolean {
+        if (input.read() != 5) return false
+        val methods = input.read()
+        val offered = ByteArray(methods)
+        input.readFully(offered)
+        // tun2socks is configured with the relay's credentials, so speak the
+        // same dialect back at it rather than inventing a second convention.
+        return if (offered.contains(AUTH_USERPASS)) {
+            output.write(byteArrayOf(5, AUTH_USERPASS)); output.flush()
+            checkUserPass(input, output)
+        } else {
+            output.write(byteArrayOf(5, AUTH_NONE)); output.flush()
+            true
+        }
+    }
+
+    private fun checkUserPass(input: DataInputStream, output: OutputStream): Boolean {
+        if (input.read() != 1) return false
+        val u = ByteArray(input.read()); input.readFully(u)
+        val p = ByteArray(input.read()); input.readFully(p)
+        val ok = String(u) == user && String(p) == pass
+        output.write(byteArrayOf(1, if (ok) 0 else 1)); output.flush()
+        return ok
+    }
+
+    private fun readAddress(input: DataInputStream, atyp: Int): Pair<String, ByteArray>? =
+        when (atyp) {
+            ATYP_IPV4 -> ByteArray(4).also { input.readFully(it) }
+                .let { InetAddress.getByAddress(it).hostAddress!! to it }
+            ATYP_IPV6 -> ByteArray(16).also { input.readFully(it) }
+                .let { InetAddress.getByAddress(it).hostAddress!! to it }
+            ATYP_DOMAIN -> {
+                val raw = ByteArray(input.read()).also { input.readFully(it) }
+                String(raw) to raw
+            }
+            else -> null
+        }
+
+    /** Hands the connection to the relay, replaying the request verbatim. */
+    private fun proxyThrough(
+        client: Socket, clientIn: InputStream, clientOut: OutputStream,
+        atyp: Int, rawAddr: ByteArray, host: String, port: Int, command: Int,
+    ) {
+        val relay = Socket()
+        try {
+            relay.tcpNoDelay = true
+            relay.connect(InetSocketAddress("127.0.0.1", relayPort), 10_000)
+            val relayIn = DataInputStream(relay.getInputStream().buffered())
+            val relayOut = relay.getOutputStream()
+
+            relayOut.write(byteArrayOf(5, 1, AUTH_USERPASS)); relayOut.flush()
+            relayIn.read(); val method = relayIn.read()
+            if (method == AUTH_USERPASS.toInt()) {
+                val u = user.toByteArray(); val p = pass.toByteArray()
+                relayOut.write(byteArrayOf(1, u.size.toByte()) + u + byteArrayOf(p.size.toByte()) + p)
+                relayOut.flush()
+                relayIn.read(); if (relayIn.read() != 0) throw IllegalStateException("relay auth rejected")
+            }
+
+            val head = if (atyp == ATYP_DOMAIN) {
+                byteArrayOf(5, command.toByte(), 0, ATYP_DOMAIN.toByte(), rawAddr.size.toByte()) + rawAddr
+            } else {
+                byteArrayOf(5, command.toByte(), 0, atyp.toByte()) + rawAddr
+            }
+            relayOut.write(head + byteArrayOf((port shr 8).toByte(), port.toByte()))
+            relayOut.flush()
+
+            // Reply header is variable length; copy it through exactly.
+            val reply = ByteArray(4)
+            relayIn.readFully(reply)
+            clientOut.write(reply)
+            val tail = when (reply[3].toInt()) {
+                ATYP_IPV4 -> ByteArray(4 + 2)
+                ATYP_IPV6 -> ByteArray(16 + 2)
+                ATYP_DOMAIN -> ByteArray((relayIn.read().also { clientOut.write(it) }) + 2)
+                else -> ByteArray(0)
+            }
+            if (tail.isNotEmpty()) { relayIn.readFully(tail); clientOut.write(tail) }
+            clientOut.flush()
+
+            splice(client, relay, clientIn, relayIn, clientOut, relayOut)
+        } catch (e: Exception) {
+            Log.w(TAG, "proxy $host:$port failed: ${e.message}")
+            close(client); close(relay)
+        }
+    }
+
+    /** Dials the destination outside the tunnel. */
+    private fun direct(client: Socket, clientOut: OutputStream, target: InetAddress, port: Int) {
+        val remote = Socket()
+        try {
+            remote.tcpNoDelay = true
+            if (!protect(remote)) throw IllegalStateException("protect() refused")
+            remote.connect(InetSocketAddress(target, port), 10_000)
+            clientOut.write(byteArrayOf(5, 0, 0, ATYP_IPV4.toByte(), 0, 0, 0, 0, 0, 0))
+            clientOut.flush()
+            splice(client, remote, client.getInputStream(), remote.getInputStream(),
+                clientOut, remote.getOutputStream())
+        } catch (e: Exception) {
+            runCatching {
+                clientOut.write(byteArrayOf(5, 5, 0, ATYP_IPV4.toByte(), 0, 0, 0, 0, 0, 0))
+                clientOut.flush()
+            }
+            close(client); close(remote)
+        }
+    }
+
+    private fun splice(
+        a: Socket, b: Socket, aIn: InputStream, bIn: InputStream,
+        aOut: OutputStream, bOut: OutputStream,
+    ) {
+        val done = AtomicBoolean(false)
+        fun pump(from: InputStream, to: OutputStream) {
+            try {
+                val buf = ByteArray(16 * 1024)
+                while (true) {
+                    val n = from.read(buf)
+                    if (n < 0) break
+                    to.write(buf, 0, n)
+                    to.flush()
+                }
+            } catch (_: Exception) {
+            } finally {
+                if (done.compareAndSet(false, true)) { close(a); close(b) }
+            }
+        }
+        pool.execute { pump(bIn, aOut) }
+        pump(aIn, bOut)
+    }
+
+    private fun close(socket: Socket) = runCatching { socket.close() }
+
+    private companion object {
+        const val TAG = "RoutingSocks"
+        const val CMD_CONNECT = 1
+        const val ATYP_IPV4 = 1
+        const val ATYP_DOMAIN = 3
+        const val ATYP_IPV6 = 4
+        const val AUTH_NONE: Byte = 0
+        const val AUTH_USERPASS: Byte = 2
+    }
+}

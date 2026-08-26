@@ -67,6 +67,8 @@ object PrefsKeys {
     const val VP8_FPS = "vp8_fps"
     const val VP8_BATCH = "vp8_batch"
     const val DUAL_TRACK = "dual_track"
+    const val SPLIT_ROUTING = "split_routing_enabled"
+    const val SESSION_USED_POOL = "session_used_pool"
     const val RELIABLE = "reliable"
     const val DEBUG = "debug"
     const val SAVED_DESTINATIONS = "saved_destinations"

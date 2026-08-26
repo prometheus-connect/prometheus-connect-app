@@ -116,6 +116,30 @@ object Prefs {
         get() = prefs.getInt(PrefsKeys.VP8_BATCH, VP8Defaults.BATCH)
         set(value) = prefs.edit { putInt(PrefsKeys.VP8_BATCH, value) }
 
+    /**
+     * Send only blocked destinations through the tunnel, everything else direct.
+     *
+     * Off by default and deliberately so: "direct" only means "reaches the
+     * internet" on an ordinary censored network. On a whitelist tariff direct
+     * traffic reaches nothing but the operator's own list, so turning this on
+     * there costs the user most of the web. [splitRoutingUsable] is the guard.
+     */
+    var splitRoutingEnabled: Boolean
+        get() = prefs.getBoolean(PrefsKeys.SPLIT_ROUTING, false)
+        set(value) = prefs.edit { putBoolean(PrefsKeys.SPLIT_ROUTING, value) }
+
+    /**
+     * Set when a session bootstrapped off the public pool, which only happens
+     * when the API was unreachable — i.e. on precisely the kind of filtered
+     * network where split routing must not be used.
+     */
+    var lastSessionUsedPool: Boolean
+        get() = prefs.getBoolean(PrefsKeys.SESSION_USED_POOL, false)
+        set(value) = prefs.edit { putBoolean(PrefsKeys.SESSION_USED_POOL, value) }
+
+    /** The toggle only takes effect when the network can carry direct traffic. */
+    val splitRoutingUsable: Boolean get() = splitRoutingEnabled && !lastSessionUsedPool
+
     var dualTrack: Boolean
         get() = prefs.getBoolean(PrefsKeys.DUAL_TRACK, false)
         set(value) = prefs.edit { putBoolean(PrefsKeys.DUAL_TRACK, value) }
