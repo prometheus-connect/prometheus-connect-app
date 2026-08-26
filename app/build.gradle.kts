@@ -7,7 +7,7 @@ plugins {
 
 val versionMajor = 1
 val versionMinor = 3
-val versionPatch = 0
+val versionPatch = 1
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 
 // versionCode is deliberately NOT derived from the version name. Android
@@ -16,7 +16,7 @@ val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 // Deriving it would have produced 1000000 for this release and forced everyone
 // who tested to uninstall first. Keep it a plain monotonic counter: bump it by
 // one for every build that leaves this machine, whatever the version name says.
-val versionCodeCounter = 1001014
+val versionCodeCounter = 1001015
 
 // ---- Prometheus Connect service configuration --------------------------------
 // Values are resolved in this order: environment variable -> local.properties
@@ -65,6 +65,10 @@ val pcRoutingPublicKey: String =
     configValue("PC_ROUTING_PUBLIC_KEY", "PC_ROUTING_PUBLIC_KEY", "REPLACE_WITH_ROUTING_PUBLIC_KEY")
 val pcRoutingProfile: String =
     configValue("PC_ROUTING_PROFILE", "PC_ROUTING_PROFILE", "ru-blocked")
+// A few hundred bytes carrying the upstream revision, so the app can tell
+// whether the 5 MB blob is worth downloading. Upstream rebuilds daily.
+val pcRoutingManifestKey: String =
+    configValue("PC_ROUTING_MANIFEST_KEY", "PC_ROUTING_MANIFEST_KEY", "REPLACE_WITH_MANIFEST_KEY")
 
 // ---- Release signing ---------------------------------------------------------
 // The keystore lives outside the repo. Without it, a release build falls back
@@ -103,6 +107,7 @@ android {
         buildConfigField("String", "PC_POOL_PUBLIC_KEY", "\"$pcPoolPublicKey\"")
         buildConfigField("String", "PC_ROUTING_PUBLIC_KEY", "\"$pcRoutingPublicKey\"")
         buildConfigField("String", "PC_ROUTING_PROFILE", "\"$pcRoutingProfile\"")
+        buildConfigField("String", "PC_ROUTING_MANIFEST_KEY", "\"$pcRoutingManifestKey\"")
         manifestPlaceholders["pcCallbackHost"] = pcCallbackHost
     }
 

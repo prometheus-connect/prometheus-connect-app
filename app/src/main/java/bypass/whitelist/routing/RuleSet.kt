@@ -2,6 +2,7 @@ package bypass.whitelist.routing
 
 import android.content.Context
 import android.util.Log
+import bypass.whitelist.util.Prefs
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.Inet4Address
@@ -13,27 +14,52 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
 
+/** What should happen to a connection. */
+enum class Decision { PROXY, BLOCK, DIRECT, UNKNOWN }
+
 /**
- * The set of destinations that should take the tunnel when split routing is on.
+ * Destination rules for split routing: IP prefixes and domain rules, compiled
+ * server-side from the upstream geoip/geosite lists.
  *
- * Everything here is IP-based. The upstream rule format also carries domain
- * rules, but those need a resolver in the routing path and the payload for them
- * is 70 MB — see the server-side builder for why neither is on the table. With
- * `IPIfNonMatch` semantics most domain rules resolve into these prefixes anyway.
+ * Both halves matter. IP rules alone miss anything blocked by name on shared
+ * hosting, which is most of it; domain rules alone miss traffic that never
+ * carries a name. The router asks about the domain first, because that is what
+ * the client actually requested — a strictly better signal than the address it
+ * happens to resolve to on a shared CDN.
  *
- * Matching is longest-prefix by construction: addresses are bucketed by prefix
- * length, and a lookup walks from /32 down. That is at most 32 hash probes,
- * which is nothing next to the network round trip it is deciding about, and it
- * is far easier to get right than a hand-rolled trie.
+ * IP matching is longest-prefix by construction: prefixes are bucketed by
+ * length and a lookup walks /32 downwards, at most 32 hash probes.
  */
 class RuleSet private constructor(
     private val v4: Map<Int, HashSet<Int>>,
     private val v6: List<Pair<ByteArray, Int>>,
+    private val exact: Map<String, Decision>,
+    private val suffix: Map<String, Decision>,
 ) {
 
-    val size: Int get() = v4.values.sumOf { it.size } + v6.size
+    val size: Int get() = v4.values.sumOf { it.size } + v6.size + exact.size + suffix.size
+    val isEmpty: Boolean get() = size == 0
 
-    fun matches(address: InetAddress): Boolean = when (address) {
+    /**
+     * Decision for a hostname, or [Decision.UNKNOWN] when no rule covers it.
+     *
+     * Walks from the full name up through its parents, so the most specific
+     * rule wins: a `direct` entry for `cdn.example.com` beats a `block` on
+     * `example.com`.
+     */
+    fun decideDomain(host: String): Decision {
+        val name = host.lowercase().trimEnd('.')
+        exact[name]?.let { return it }
+        var index = 0
+        while (index >= 0 && index < name.length) {
+            suffix[name.substring(index)]?.let { return it }
+            val dot = name.indexOf('.', index)
+            index = if (dot < 0) -1 else dot + 1
+        }
+        return Decision.UNKNOWN
+    }
+
+    fun matchesIp(address: InetAddress): Boolean = when (address) {
         is Inet4Address -> matchV4(address)
         is Inet6Address -> matchV6(address)
         else -> false
@@ -59,11 +85,9 @@ class RuleSet private constructor(
                 val take = if (remaining >= 8) 8 else remaining
                 val mask = (0xFF shl (8 - take)) and 0xFF
                 if ((raw[index].toInt() and mask) != (network[index].toInt() and mask)) {
-                    ok = false
-                    break
+                    ok = false; break
                 }
-                remaining -= take
-                index++
+                remaining -= take; index++
             }
             if (ok) return true
         }
@@ -75,79 +99,79 @@ class RuleSet private constructor(
         private val MAGIC = byteArrayOf('P'.code.toByte(), 'C'.code.toByte(),
             'R'.code.toByte(), 'T'.code.toByte())
 
-        /** Empty set — matches nothing, so every connection goes direct. */
-        val EMPTY = RuleSet(emptyMap(), emptyList())
+        val EMPTY = RuleSet(emptyMap(), emptyList(), emptyMap(), emptyMap())
 
         /**
-         * Loads the cached blob, refreshing it from the rendezvous first when
-         * possible.
+         * Loads the cached rules, refreshing them when the server has a newer
+         * revision.
          *
-         * A stale cache beats no rules: if the download fails we keep whatever
-         * we already had, because the alternative is silently routing a user's
-         * blocked traffic direct.
+         * Upstream rebuilds its lists at least daily, so a stale cache means a
+         * newly blocked site quietly goes direct. The manifest is a few hundred
+         * bytes and carries the revision, so checking costs nothing and the 5 MB
+         * download happens only when something actually changed.
+         *
+         * A failed refresh keeps whatever was already cached: stale rules beat
+         * no rules, and the caller treats "no rules" as "tunnel everything".
          */
-        fun load(context: Context, publicKey: String, profile: String): RuleSet {
+        fun load(context: Context, manifestKey: String, blobKey: String, profile: String): RuleSet {
             val cache = File(context.filesDir, "routing-$profile.bin")
-            if (shouldRefresh(cache)) {
-                runCatching { download(publicKey, cache) }
-                    .onFailure { Log.w(TAG, "rule refresh failed: ${it.message}") }
-            }
+            runCatching { refresh(manifestKey, blobKey, profile, cache) }
+                .onFailure { Log.w(TAG, "rule refresh skipped: ${it.message}") }
             if (!cache.isFile) return EMPTY
             return runCatching { parse(cache.readBytes()) }
                 .onFailure { Log.w(TAG, "rule parse failed: ${it.message}") }
                 .getOrDefault(EMPTY)
         }
 
-        private fun shouldRefresh(cache: File): Boolean =
-            !cache.isFile || System.currentTimeMillis() - cache.lastModified() > REFRESH_AFTER_MS
-
-        private fun download(publicKey: String, cache: File) {
-            // Same trick as the call pool: the anonymous public-resource API is
-            // reachable on a whitelist channel and needs no credentials, so the
-            // download href comes from there rather than being hardcoded.
-            val metaUrl = "https://cloud-api.yandex.net/v1/disk/public/resources/download" +
-                "?public_key=" + URLEncoder.encode(publicKey, StandardCharsets.UTF_8.name())
-            val href = readJsonField(metaUrl, "href")
-                ?: throw IllegalStateException("no download href")
-            val tmp = File(cache.parentFile, cache.name + ".tmp")
-            (URL(href).openConnection() as HttpURLConnection).run {
-                connectTimeout = 15_000
-                readTimeout = 120_000
-                try {
-                    inputStream.use { input -> tmp.outputStream().use { input.copyTo(it) } }
-                } finally {
-                    disconnect()
-                }
+        private fun refresh(manifestKey: String, blobKey: String, profile: String, cache: File) {
+            val manifest = org.json.JSONObject(readPublic(manifestKey).toString(Charsets.UTF_8))
+            val revision = manifest.optString("revision")
+            if (revision.isEmpty()) throw IllegalStateException("manifest has no revision")
+            if (revision == Prefs.routingRulesRevision && cache.isFile) {
+                Log.i(TAG, "rules already at $revision")
+                return
             }
-            // Only replace a good cache once the new file is known to parse.
-            parse(tmp.readBytes())
+            val blob = readPublic(blobKey)
+            parse(blob)  // never replace a good cache with something unparseable
+            val tmp = File(cache.parentFile, cache.name + ".tmp")
+            tmp.writeBytes(blob)
             if (!tmp.renameTo(cache)) throw IllegalStateException("cannot replace cache")
+            Prefs.routingRulesRevision = revision
+            Log.i(TAG, "rules updated to $revision (${blob.size / 1024} KB)")
         }
 
-        private fun readJsonField(url: String, field: String): String? {
+        /** Public Disk resources need no credentials — the same trick the pool uses. */
+        private fun readPublic(publicKey: String): ByteArray {
+            val api = "https://cloud-api.yandex.net/v1/disk/public/resources/download" +
+                "?public_key=" + URLEncoder.encode(publicKey, StandardCharsets.UTF_8.name())
+            val href = org.json.JSONObject(fetch(api, 20_000).toString(Charsets.UTF_8))
+                .optString("href").ifEmpty { throw IllegalStateException("no href") }
+            return fetch(href, 180_000)
+        }
+
+        private fun fetch(url: String, readTimeoutMs: Int): ByteArray {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10_000
-                readTimeout = 20_000
+                connectTimeout = 15_000
+                readTimeout = readTimeoutMs
             }
             return try {
-                val text = conn.inputStream.bufferedReader(StandardCharsets.UTF_8)
-                    .use { it.readText() }
-                org.json.JSONObject(text).optString(field).ifEmpty { null }
+                conn.inputStream.use { it.readBytes() }
             } finally {
                 conn.disconnect()
             }
         }
 
         private fun parse(blob: ByteArray): RuleSet {
-            require(blob.size >= 12) { "blob too short" }
+            require(blob.size >= 16) { "blob too short" }
             require(blob.copyOfRange(0, 4).contentEquals(MAGIC)) { "bad magic" }
-            require(blob[4].toInt() == 1) { "unsupported rule format ${blob[4]}" }
-            val header = ByteBuffer.wrap(blob, 8, 8).order(ByteOrder.LITTLE_ENDIAN)
+            require(blob[4].toInt() == 2) { "unsupported rule format ${blob[4]}" }
+            val header = ByteBuffer.wrap(blob, 8, 12).order(ByteOrder.LITTLE_ENDIAN)
             val n4 = header.int
             val n6 = header.int
+            val nd = header.int
 
+            var offset = 20
             val v4 = HashMap<Int, HashSet<Int>>()
-            var offset = 16
             repeat(n4) {
                 val bits = ByteBuffer.wrap(blob, offset, 4).order(ByteOrder.BIG_ENDIAN).int
                 val length = blob[offset + 4].toInt() and 0xFF
@@ -157,14 +181,25 @@ class RuleSet private constructor(
             }
             val v6 = ArrayList<Pair<ByteArray, Int>>(n6)
             repeat(n6) {
-                val network = blob.copyOfRange(offset, offset + 16)
-                val length = blob[offset + 16].toInt() and 0xFF
+                v6.add(blob.copyOfRange(offset, offset + 16) to (blob[offset + 16].toInt() and 0xFF))
                 offset += 17
-                v6.add(network to length)
             }
-            return RuleSet(v4, v6)
+            val exact = HashMap<String, Decision>()
+            val suffix = HashMap<String, Decision>()
+            repeat(nd) {
+                val kind = blob[offset].toInt()
+                val action = blob[offset + 1].toInt()
+                val length = blob[offset + 2].toInt() and 0xFF
+                val value = String(blob, offset + 3, length, StandardCharsets.UTF_8)
+                offset += 3 + length
+                val decision = when (action) {
+                    0 -> Decision.PROXY
+                    1 -> Decision.BLOCK
+                    else -> Decision.DIRECT
+                }
+                (if (kind == 1) exact else suffix)[value] = decision
+            }
+            return RuleSet(v4, v6, exact, suffix)
         }
-
-        private const val REFRESH_AFTER_MS = 7L * 24 * 60 * 60 * 1000
     }
 }

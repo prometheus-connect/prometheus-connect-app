@@ -69,6 +69,7 @@ object PrefsKeys {
     const val DUAL_TRACK = "dual_track"
     const val SPLIT_ROUTING = "split_routing_enabled"
     const val SESSION_USED_POOL = "session_used_pool"
+    const val ROUTING_REVISION = "routing_rules_revision"
     const val RELIABLE = "reliable"
     const val DEBUG = "debug"
     const val SAVED_DESTINATIONS = "saved_destinations"

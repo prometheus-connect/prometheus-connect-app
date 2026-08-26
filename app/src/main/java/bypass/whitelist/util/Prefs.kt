@@ -140,6 +140,11 @@ object Prefs {
     /** The toggle only takes effect when the network can carry direct traffic. */
     val splitRoutingUsable: Boolean get() = splitRoutingEnabled && !lastSessionUsedPool
 
+    /** Upstream revision the cached rule blob was built from. */
+    var routingRulesRevision: String
+        get() = prefs.getString(PrefsKeys.ROUTING_REVISION, "") ?: ""
+        set(value) = prefs.edit { putString(PrefsKeys.ROUTING_REVISION, value) }
+
     var dualTrack: Boolean
         get() = prefs.getBoolean(PrefsKeys.DUAL_TRACK, false)
         set(value) = prefs.edit { putBoolean(PrefsKeys.DUAL_TRACK, value) }

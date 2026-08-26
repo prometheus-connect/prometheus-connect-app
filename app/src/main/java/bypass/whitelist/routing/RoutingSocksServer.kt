@@ -94,13 +94,46 @@ class RoutingSocksServer(
             return
         }
 
-        val target = resolve(host)
-        val viaTunnel = target == null || rules.matches(target)
-        if (viaTunnel) {
-            proxyThrough(client, input, output, atyp, rawAddr, host, port, command)
-        } else {
-            direct(client, output, target, port)
+        when (decide(atyp, host)) {
+            Decision.BLOCK -> {
+                // Refuse rather than tunnel: an ad domain should cost nothing,
+                // least of all bandwidth on a 4-6 Mbit/s transport.
+                runCatching {
+                    output.write(byteArrayOf(5, 2, 0, ATYP_IPV4.toByte(), 0, 0, 0, 0, 0, 0))
+                    output.flush()
+                }
+                close(client)
+            }
+            Decision.DIRECT -> {
+                val target = resolve(host)
+                if (target == null) {
+                    // Cannot resolve it ourselves, so let the tunnel try: on a
+                    // filtered network the resolver is often the broken part,
+                    // and failing here would strand the connection.
+                    proxyThrough(client, input, output, atyp, rawAddr, host, port, command)
+                } else {
+                    direct(client, output, target, port)
+                }
+            }
+            else -> proxyThrough(client, input, output, atyp, rawAddr, host, port, command)
         }
+    }
+
+    /**
+     * Domain rules are consulted first and win outright: the name the client
+     * asked for is a better signal than whatever address it resolves to, which
+     * on shared hosting is shared with everything else on that CDN.
+     *
+     * Anything with no rule at all takes the tunnel. That is the deliberate
+     * default — being slow is recoverable, being exposed is not.
+     */
+    private fun decide(atyp: Int, host: String): Decision {
+        if (atyp == ATYP_DOMAIN) {
+            val byName = rules.decideDomain(host)
+            if (byName != Decision.UNKNOWN) return byName
+        }
+        val target = resolve(host) ?: return Decision.PROXY
+        return if (rules.matchesIp(target)) Decision.PROXY else Decision.DIRECT
     }
 
     /**

@@ -276,8 +276,11 @@ class TunnelVpnService : VpnService() {
     private fun startRoutingIfEnabled(): Long {
         if (!Prefs.splitRoutingUsable) return Prefs.socksPort
         val rules = RuleSet.load(
-            applicationContext, BuildConfig.PC_ROUTING_PUBLIC_KEY, BuildConfig.PC_ROUTING_PROFILE)
-        if (rules.size == 0) {
+            applicationContext,
+            BuildConfig.PC_ROUTING_MANIFEST_KEY,
+            BuildConfig.PC_ROUTING_PUBLIC_KEY,
+            BuildConfig.PC_ROUTING_PROFILE)
+        if (rules.isEmpty) {
             // No rules means every destination would look "not blocked" and go
             // direct — the exact opposite of what the user asked for. Carry on
             // tunnelling everything until a rule set is actually available.
