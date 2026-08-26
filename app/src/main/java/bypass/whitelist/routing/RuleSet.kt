@@ -161,7 +161,9 @@ class RuleSet private constructor(
             }
         }
 
-        private fun parse(blob: ByteArray): RuleSet {
+        /** Visible for tests: the format is the part most likely to rot. */
+        @JvmStatic
+        internal fun parse(blob: ByteArray): RuleSet {
             require(blob.size >= 16) { "blob too short" }
             require(blob.copyOfRange(0, 4).contentEquals(MAGIC)) { "bad magic" }
             require(blob[4].toInt() == 2) { "unsupported rule format ${blob[4]}" }
