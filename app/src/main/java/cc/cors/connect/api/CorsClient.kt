@@ -210,10 +210,11 @@ class CorsClient(
         body: JSONObject? = null,
         bearer: String? = null,
         timeoutMs: Int = TIMEOUT_MS,
+        useSocks: Boolean = viaSocks,
     ): JSONObject {
         val proxied = isProxy(base)
         val url = URL(buildRequestUrl(base, path))
-        val opened = if (viaSocks) url.openConnection(socksProxy()) else url.openConnection()
+        val opened = if (useSocks) url.openConnection(socksProxy()) else url.openConnection()
         val conn = (opened as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = CONNECT_TIMEOUT_MS
@@ -262,6 +263,20 @@ class CorsClient(
             throw e
         } catch (e: Exception) {
             // Network / protocol failure (unreachable host, timeout, malformed JSON).
+            //
+            // Retry through the relay before giving up. The app is excluded from
+            // its own VpnService, so on a filtered network *every* endpoint is
+            // unreachable the ordinary way once a tunnel exists — and fixing
+            // that one endpoint at a time has already been got wrong twice, the
+            // second time silently swallowing the Telegram sign-in that
+            // adoption depends on. Doing it here covers the ones nobody
+            // remembered. Costs a failed connect to a closed local port when no
+            // tunnel is up, which is immediate.
+            if (!useSocks) {
+                runCatching {
+                    return execute(base, method, path, body, bearer, timeoutMs, useSocks = true)
+                }
+            }
             throw CorsException(0, e.message ?: "network error", e)
         } finally {
             conn.disconnect()
