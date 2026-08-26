@@ -2,11 +2,17 @@ package cc.cors.connect.api
 
 import bypass.whitelist.BuildConfig
 import bypass.whitelist.util.Prefs
+import bypass.whitelist.util.SocksAuth
 import org.json.JSONObject
+import java.net.Authenticator
 import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
+import java.net.Proxy
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Minimal client for the Prometheus Connect instance-creation API
@@ -19,6 +25,18 @@ import java.nio.charset.StandardCharsets
 class CorsClient(
     private val baseUrl: String = Prefs.corsBaseUrl,
     private val appToken: String = BuildConfig.PC_APP_TOKEN,
+    /**
+     * Route requests through the relay's own local SOCKS5 instead of the
+     * device's default network.
+     *
+     * The app excludes itself from its own VpnService — it has to, since the
+     * relay runs in this process and would otherwise tunnel through itself —
+     * which means our HTTP never rides the tunnel we just brought up. On a
+     * whitelist tariff that leaves the API permanently unreachable, so anything
+     * that must talk to the backend *after* connecting has to dial through the
+     * relay explicitly. See [viaTunnel].
+     */
+    private val viaSocks: Boolean = false,
 ) {
 
     init {
@@ -194,7 +212,9 @@ class CorsClient(
         timeoutMs: Int = TIMEOUT_MS,
     ): JSONObject {
         val proxied = isProxy(base)
-        val conn = (URL(buildRequestUrl(base, path)).openConnection() as HttpURLConnection).apply {
+        val url = URL(buildRequestUrl(base, path))
+        val opened = if (viaSocks) url.openConnection(socksProxy()) else url.openConnection()
+        val conn = (opened as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = timeoutMs
@@ -283,6 +303,46 @@ class CorsClient(
         catch (_: Exception) { text.trim() }
 
     companion object {
+        /**
+         * A client that reaches the backend through the tunnel the relay is
+         * already carrying.
+         *
+         * Two deliberate differences from the default client. It dials through
+         * the relay's local SOCKS5, because the app is outside its own VPN and
+         * would otherwise never reach the API on a filtered network. And it
+         * talks to the backend **directly** instead of through the Yandex Cloud
+         * Function: that function exists only to be reachable *before* a tunnel
+         * does, and once one is up it adds nothing but its own quirks — no path
+         * routing, and a swallowed Authorization header.
+         */
+        fun viaTunnel(): CorsClient = CorsClient(
+            baseUrl = BuildConfig.PC_FALLBACK_BASE_URL.trimEnd('/'),
+            viaSocks = true,
+        )
+
+        /**
+         * Credentials for the relay's SOCKS5 reach java.net through the default
+         * Authenticator, which is process-global — so this one answers only for
+         * loopback on the relay's own port, and stays silent for anything else
+         * rather than offering the password to whatever host happens to ask.
+         */
+        private val socksAuthInstalled = AtomicBoolean(false)
+
+        private fun socksProxy(): Proxy {
+            if (socksAuthInstalled.compareAndSet(false, true)) {
+                Authenticator.setDefault(object : Authenticator() {
+                    override fun getPasswordAuthentication(): PasswordAuthentication? {
+                        val site = requestingSite
+                        if (site == null || !site.isLoopbackAddress) return null
+                        if (requestingPort != Prefs.socksPort.toInt()) return null
+                        return PasswordAuthentication(SocksAuth.user, SocksAuth.pass.toCharArray())
+                    }
+                })
+            }
+            return Proxy(Proxy.Type.SOCKS,
+                InetSocketAddress("127.0.0.1", Prefs.socksPort.toInt()))
+        }
+
         private const val TIMEOUT_MS = 15_000
         /** Connecting is fast even when the answer is slow; only reads drag. */
         private const val CONNECT_TIMEOUT_MS = 15_000

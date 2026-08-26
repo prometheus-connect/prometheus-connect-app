@@ -214,6 +214,25 @@ class CorsInstanceController(
      * the call on the five-minute anonymous window, so giving up here costs the
      * user a short session, never a broken one.
      */
+    /**
+     * Client used for everything that happens *after* the tunnel is up. It
+     * dials through the relay's SOCKS5, because the app sits outside its own
+     * VpnService and the default client would go straight out to a network
+     * that, on a whitelist tariff, cannot reach us at all.
+     */
+    private val tunnelClient: CorsClient by lazy { CorsClient.viaTunnel() }
+
+    /**
+     * The client to use once a tunnel exists.
+     *
+     * A pool session is by definition one whose network could not reach the API
+     * unaided, so everything that keeps it alive — the heartbeat above all —
+     * has to go back through the relay. Getting this wrong is not cosmetic: a
+     * heartbeat that cannot land lets the lease lapse and the session dies a
+     * few minutes after it was adopted.
+     */
+    private val liveClient: CorsClient get() = if (poolEntry != null) tunnelClient else client
+
     private fun adoptWhenTunnelIsUp() {
         val entry = poolEntry ?: return
         if (entry.backendId.isEmpty()) {
@@ -237,7 +256,7 @@ class CorsInstanceController(
         val deadline = System.currentTimeMillis() + ADOPT_WINDOW_MS
         while (!stopped && System.currentTimeMillis() < deadline) {
             try {
-                if (client.health().serviceAvailable) return true
+                if (tunnelClient.health().serviceAvailable) return true
             } catch (_: Exception) {
                 // Expected while the tunnel is still coming up.
             }
@@ -255,7 +274,7 @@ class CorsInstanceController(
         if (stopped) return
         val initData = TelegramAuth.initData()
         val out = try {
-            client.adoptPoolInstance(
+            tunnelClient.adoptPoolInstance(
                 backendId = entry.backendId,
                 outputLink = entry.url,
                 platform = entry.platform.id,
@@ -456,7 +475,7 @@ class CorsInstanceController(
         Log.i(TAG, "doHeartbeat: POSTing for instanceId=$currentInstanceId, wakeLockHeld=${wakeLock.isHeld}")
         val t0 = System.currentTimeMillis()
         try {
-            val out = client.heartbeat(currentInstanceId, sessionToken)
+            val out = liveClient.heartbeat(currentInstanceId, sessionToken)
             Log.i(TAG, "doHeartbeat: OK in ${System.currentTimeMillis() - t0}ms, expiresAt=${out.expiresAt}")
             // success — schedule the next beat, keeping the CPU awake for the
             // full wait until then (see startHeartbeat for why).
