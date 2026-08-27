@@ -14,6 +14,11 @@ import bypass.whitelist.tunnel.SplitTunnelingMode
 import bypass.whitelist.tunnel.TunnelMode
 import bypass.whitelist.util.Callback
 import bypass.whitelist.util.ParamCallback
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import bypass.whitelist.BuildConfig
 import bypass.whitelist.util.Prefs
 import bypass.whitelist.util.ThemeMode
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -195,6 +200,18 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         }
         addSwitchRow(card, R.drawable.ic_setting_debug, getString(R.string.settings_row_debug), getString(R.string.settings_row_debug_sub), Prefs.debug) { checked ->
             Prefs.debug = checked
+        }
+        // The build was invisible from inside the app, which makes both testing
+        // and any later "which version are you on?" a guess. Tapping it copies
+        // the full identifier, so a bug report can carry it verbatim.
+        val build = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        addRow(card, R.drawable.ic_setting_debug, getString(R.string.settings_row_version),
+            null, build) {
+            val clipboard = requireContext()
+                .getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("version", build))
+            Toast.makeText(requireContext(), R.string.settings_row_version_copied,
+                Toast.LENGTH_SHORT).show()
         }
         return section
     }
