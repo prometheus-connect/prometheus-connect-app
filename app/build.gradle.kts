@@ -115,6 +115,13 @@ android {
         buildConfig = true
     }
 
+    // android.util.Log is a stub in unit tests and throws by default. The
+    // routing server logs, and a throwing logger would fail tests for a reason
+    // that has nothing to do with what they check.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     // AndroidManifest sets android:extractNativeLibs="true", so the packaging
     // must use legacy (uncompressed-free) packaging for native libs.
     packaging {
