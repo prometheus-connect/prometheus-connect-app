@@ -21,7 +21,10 @@ import bypass.whitelist.util.DnsMode
 import bypass.whitelist.util.Prefs
 import bypass.whitelist.BuildConfig
 import bypass.whitelist.routing.RoutingSocksServer
+import bypass.whitelist.routing.RuleCatalogue
 import bypass.whitelist.routing.RuleSet
+import bypass.whitelist.routing.RuleStatus
+import bypass.whitelist.routing.UserRules
 import bypass.whitelist.util.SocksAuth
 import bypass.whitelist.util.Vpn
 import androidbind.Androidbind
@@ -236,14 +239,28 @@ class TunnelVpnService : VpnService() {
         updateStatus(VpnStatus.TUNNEL_ACTIVE)
         val startGeneration = bumpTunGeneration()
 
-        // With split routing on, tun2socks talks to our router instead of the
-        // relay, and the router decides per connection. With it off the router
-        // is not started at all — tun2socks addresses the relay exactly as it
-        // always has, so the disabled state cannot behave differently.
-        val socksTarget = startRoutingIfEnabled()
-
         tun2socksThread = Thread {
             if (!isRunning || stopInProgress || !isTunGenerationCurrent(startGeneration)) {
+                closeRawFd(fd)
+                return@Thread
+            }
+            // With split routing on, tun2socks talks to our router instead of
+            // the relay, and the router decides per connection. With it off the
+            // router is not started at all — tun2socks addresses the relay
+            // exactly as it always has, so the disabled state cannot behave
+            // differently.
+            //
+            // It happens here rather than in start() because it downloads
+            // megabytes. From onStartCommand that is the main thread, where
+            // every fetch threw NetworkOnMainThreadException into a runCatching
+            // and left the cache empty — split routing could not have worked
+            // even once.
+            val socksTarget = startRoutingIfEnabled()
+            if (!isRunning || stopInProgress || !isTunGenerationCurrent(startGeneration)) {
+                // A stop arrived while the rules were downloading. Hand the
+                // port back, or the next connect cannot bind it.
+                routingServer?.stop()
+                routingServer = null
                 closeRawFd(fd)
                 return@Thread
             }
@@ -292,6 +309,17 @@ class TunnelVpnService : VpnService() {
             Log.w(TAG, "split routing requested but no rules available; tunnelling everything")
             return Prefs.socksPort
         }
+        val config = Prefs.routingConfig
+        val overlay = UserRules.build(
+            config,
+            RuleCatalogue.resolve(
+                applicationContext,
+                BuildConfig.PC_ROUTING_CATALOGUE_KEY,
+                UserRules.categoriesIn(config),
+                allowNetwork = true,
+            ),
+        )
+        reportInertRules(overlay)
         val port = Prefs.socksPort.toInt() + 1
         return try {
             routingServer = RoutingSocksServer(
@@ -300,6 +328,7 @@ class TunnelVpnService : VpnService() {
                 user = SocksAuth.user,
                 pass = SocksAuth.pass,
                 rules = rules,
+                overlay = overlay,
                 protect = { socket -> protect(socket) },
                 trace = { line -> TunnelServiceState.logCallback?.invoke(line) },
             ).also { it.start() }
@@ -308,6 +337,26 @@ class TunnelVpnService : VpnService() {
             Log.e(TAG, "routing server failed to start: ${e.message}; tunnelling everything")
             routingServer = null
             Prefs.socksPort
+        }
+    }
+
+    /**
+     * Names every rule that is not deciding anything, into the log the user can
+     * send back.
+     *
+     * A rule that silently does nothing is worse than no rule: the user goes on
+     * believing a site is covered. The screen says the same thing, but the log
+     * is what survives a session.
+     */
+    private fun reportInertRules(overlay: UserRules) {
+        val inert = overlay.entries.filter { it.status != RuleStatus.ACTIVE }
+        if (inert.isEmpty()) return
+        TunnelServiceState.logCallback?.invoke(
+            "split routing: ${inert.size} of ${overlay.entries.size} rules are not in effect")
+        inert.forEach {
+            val reason = getString(it.status.labelRes)
+            Log.w(TAG, "rule not in effect: ${it.rule} — $reason")
+            TunnelServiceState.logCallback?.invoke("  ${it.rule} — $reason")
         }
     }
 

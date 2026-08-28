@@ -36,6 +36,14 @@ class RoutingSocksServer(
     private val user: String,
     private val pass: String,
     private val rules: RuleSet,
+    /**
+     * The user's own three lists, asked before the blob.
+     *
+     * Empty by default, which is the blob-only behaviour this server had before
+     * the lists existed. Anything else would make an untouched install route by
+     * whatever happened to be typed into a screen it never opened.
+     */
+    private val overlay: UserRules = UserRules.EMPTY,
     /** VpnService.protect — without it a direct socket loops back into the tunnel. */
     private val protect: (Socket) -> Boolean,
     /**
@@ -60,8 +68,10 @@ class RoutingSocksServer(
         socket.reuseAddress = true
         socket.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), listenPort))
         server = socket
-        Log.i(TAG, "routing socks on 127.0.0.1:$listenPort -> relay :$relayPort, ${rules.size} rules")
-        trace("split routing: listening on 127.0.0.1:$listenPort, relay :$relayPort, ${rules.size} rules")
+        Log.i(TAG, "routing socks on 127.0.0.1:$listenPort -> relay :$relayPort, " +
+            "${rules.size} rules, ${overlay.size} from the user's lists")
+        trace("split routing: listening on 127.0.0.1:$listenPort, relay :$relayPort, " +
+            "${rules.size} rules, ${overlay.size} from the user's lists")
         thread(name = "routing-socks", isDaemon = true) {
             while (running.get()) {
                 val client = try {
@@ -140,19 +150,31 @@ class RoutingSocksServer(
     }
 
     /**
-     * Domain rules are consulted first and win outright: the name the client
-     * asked for is a better signal than whatever address it resolves to, which
-     * on shared hosting is shared with everything else on that CDN.
+     * Two orderings, and they are different questions.
+     *
+     * By signal: the name the client asked for beats the address it resolves
+     * to, which on shared hosting it shares with everything else on that CDN.
+     * By source: the user's own lists beat the published blob, so a rule typed
+     * by hand is not overruled by a list compiled on another machine.
+     *
+     * Hence name-overlay, name-blob, address-overlay, address-blob. Asking the
+     * overlay's addresses before the blob's names would invert the first
+     * ordering and cost a DNS lookup on every connection the blob could already
+     * have answered by name.
      *
      * Anything with no rule at all takes the tunnel. That is the deliberate
      * default — being slow is recoverable, being exposed is not.
      */
     private fun decide(atyp: Int, host: String): Decision {
         if (atyp == ATYP_DOMAIN) {
+            val byUser = overlay.decideDomain(host)
+            if (byUser != Decision.UNKNOWN) return byUser
             val byName = rules.decideDomain(host)
             if (byName != Decision.UNKNOWN) return byName
         }
         val target = resolve(host) ?: return Decision.PROXY
+        val byAddress = overlay.decideIp(target)
+        if (byAddress != Decision.UNKNOWN) return byAddress
         return if (rules.matchesIp(target)) Decision.PROXY else Decision.DIRECT
     }
 

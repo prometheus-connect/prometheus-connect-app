@@ -56,6 +56,30 @@ must serve a `/.well-known/assetlinks.json` naming this app's package and its
 release signing certificate — otherwise Android will not intercept the callback
 locally and the sign-in flow silently falls back to opening a web page.
 
+## Published lists
+
+Four more keys name published Yandex Disk resources, read anonymously. They live
+on Disk rather than on the backend because `cloud-api.yandex.net` survives a
+strict whitelist tariff and the backend's own host does not — these have to be
+reachable on exactly the networks the tunnel does not exist on yet.
+
+```properties
+PC_POOL_PUBLIC_KEY=https://yadi.sk/d/<pool folder>
+PC_ROUTING_PUBLIC_KEY=https://yadi.sk/d/<rule blob>
+PC_ROUTING_MANIFEST_KEY=https://yadi.sk/d/<blob manifest>
+PC_ROUTING_CATALOGUE_KEY=https://yadi.sk/d/<category folder>
+PC_ROUTING_PROFILE=ru-blocked
+```
+
+The blob and the catalogue are two views of the same upstream lists.
+`PC_ROUTING_PUBLIC_KEY` is one profile compiled into a single decision set, which
+the router consults for everything the user did not rule on; its manifest carries
+a revision so the app can tell whether the download is worth making.
+`PC_ROUTING_CATALOGUE_KEY` is a folder holding the same lists cut one category per
+entry, which is what a user rule naming `geosite:x` or `geoip:x` is resolved
+against. Leave the catalogue key unset and those rules are reported on the split
+routing screen as not in effect — never silently ignored.
+
 ## Release signing
 
 Generate a keystore and keep it out of git:

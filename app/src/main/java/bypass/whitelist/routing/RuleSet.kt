@@ -4,12 +4,9 @@ import android.content.Context
 import android.util.Log
 import bypass.whitelist.util.Prefs
 import java.io.File
-import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
-import java.net.URL
-import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
@@ -141,14 +138,14 @@ class RuleSet private constructor(
         }
 
         private fun refresh(manifestKey: String, blobKey: String, profile: String, cache: File) {
-            val manifest = org.json.JSONObject(readPublic(manifestKey).toString(Charsets.UTF_8))
+            val manifest = org.json.JSONObject(PublicDisk.read(manifestKey).toString(Charsets.UTF_8))
             val revision = manifest.optString("revision")
             if (revision.isEmpty()) throw IllegalStateException("manifest has no revision")
             if (revision == Prefs.routingRulesRevision && cache.isFile) {
                 Log.i(TAG, "rules already at $revision")
                 return
             }
-            val blob = readPublic(blobKey)
+            val blob = PublicDisk.read(blobKey)
             parse(blob)  // never replace a good cache with something unparseable
             val tmp = File(cache.parentFile, cache.name + ".tmp")
             tmp.writeBytes(blob)
@@ -157,30 +154,43 @@ class RuleSet private constructor(
             Log.i(TAG, "rules updated to $revision (${blob.size / 1024} KB)")
         }
 
-        /** Public Disk resources need no credentials — the same trick the pool uses. */
-        private fun readPublic(publicKey: String): ByteArray {
-            val api = "https://cloud-api.yandex.net/v1/disk/public/resources/download" +
-                "?public_key=" + URLEncoder.encode(publicKey, StandardCharsets.UTF_8.name())
-            val href = org.json.JSONObject(fetch(api, 20_000).toString(Charsets.UTF_8))
-                .optString("href").ifEmpty { throw IllegalStateException("no href") }
-            return fetch(href, 180_000)
-        }
-
-        private fun fetch(url: String, readTimeoutMs: Int): ByteArray {
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000
-                readTimeout = readTimeoutMs
-            }
-            return try {
-                conn.inputStream.use { it.readBytes() }
-            } finally {
-                conn.disconnect()
-            }
-        }
-
         /** Visible for tests: the format is the part most likely to rot. */
         @JvmStatic
         internal fun parse(blob: ByteArray): RuleSet {
+            val v4 = HashMap<Int, HashSet<Int>>()
+            val v6 = ArrayList<Pair<ByteArray, Int>>()
+            val exact = HashMap<String, Decision>()
+            val suffix = HashMap<String, Decision>()
+            read(
+                blob,
+                onV4 = { bits, length -> v4.getOrPut(length) { HashSet() }.add(bits) },
+                onV6 = { network, length -> v6.add(network to length) },
+                onDomain = { isExact, decision, name ->
+                    (if (isExact) exact else suffix)[name] = decision
+                },
+            )
+            return RuleSet(v4, v6, exact, suffix)
+        }
+
+        /**
+         * Reads the format, handing over one rule at a time.
+         *
+         * Two callers want the same bytes in different shapes: this class
+         * buckets them for lookups, [UserRules] re-labels each under the list
+         * the category name was typed into. Handing them over one by one rather
+         * than as a list in between, because the profile blob is 330 000 rules
+         * and building it twice would double the peak to pass it straight on.
+         *
+         * @throws IllegalArgumentException on anything that is not a v2 blob,
+         * and IndexOutOfBounds on one that stops early — a caller part-way
+         * through has to treat what it took as void.
+         */
+        internal fun read(
+            blob: ByteArray,
+            onV4: (bits: Int, length: Int) -> Unit,
+            onV6: (network: ByteArray, length: Int) -> Unit,
+            onDomain: (exact: Boolean, decision: Decision, name: String) -> Unit,
+        ) {
             require(blob.size >= 16) { "blob too short" }
             require(blob.copyOfRange(0, 4).contentEquals(MAGIC)) { "bad magic" }
             require(blob[4].toInt() == 2) { "unsupported rule format ${blob[4]}" }
@@ -190,21 +200,16 @@ class RuleSet private constructor(
             val nd = header.int
 
             var offset = 20
-            val v4 = HashMap<Int, HashSet<Int>>()
             repeat(n4) {
                 val bits = ByteBuffer.wrap(blob, offset, 4).order(ByteOrder.BIG_ENDIAN).int
                 val length = blob[offset + 4].toInt() and 0xFF
                 offset += 5
-                val masked = if (length == 0) 0 else bits and (-1 shl (32 - length))
-                v4.getOrPut(length) { HashSet() }.add(masked)
+                onV4(if (length == 0) 0 else bits and (-1 shl (32 - length)), length)
             }
-            val v6 = ArrayList<Pair<ByteArray, Int>>(n6)
             repeat(n6) {
-                v6.add(blob.copyOfRange(offset, offset + 16) to (blob[offset + 16].toInt() and 0xFF))
+                onV6(blob.copyOfRange(offset, offset + 16), blob[offset + 16].toInt() and 0xFF)
                 offset += 17
             }
-            val exact = HashMap<String, Decision>()
-            val suffix = HashMap<String, Decision>()
             repeat(nd) {
                 val kind = blob[offset].toInt()
                 val action = blob[offset + 1].toInt()
@@ -216,9 +221,8 @@ class RuleSet private constructor(
                     1 -> Decision.BLOCK
                     else -> Decision.DIRECT
                 }
-                (if (kind == 1) exact else suffix)[value] = decision
+                onDomain(kind == 1, decision, value)
             }
-            return RuleSet(v4, v6, exact, suffix)
         }
     }
 }

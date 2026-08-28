@@ -94,6 +94,7 @@
     <string name="sheet_save">Save call</string>
     <string name="sheet_save_short">Save</string>
     <string name="sheet_cancel">Cancel</string>
+    <string name="sheet_close">Close</string>
 
     <string name="paste_from_clipboard">Paste from clipboard</string>
     <string name="clipboard_empty">Clipboard is empty</string>
@@ -260,8 +261,18 @@
     <string name="routing_list_direct">Direct</string>
     <string name="routing_list_block">Block</string>
     <string name="routing_list_empty">Empty</string>
-    <string name="routing_list_unsupported" tools:ignore="PluralsCandidate">%1$d not understood</string>
     <string name="routing_rules_sub">One rule per line.</string>
+    <string name="routing_rules_checking">Checking which of these are in effect\u2026</string>
+    <string name="routing_list_effect" tools:ignore="PluralsCandidate">%1$d of %2$d in effect</string>
+    <string name="routing_list_inert">not in effect</string>
+    <string name="routing_lists_inert_global">Global proxy is on, so every destination takes the tunnel and none of these lists decides anything. Turn it off above to route by them.</string>
+    <string name="routing_lists_inert_pool">This session started from the standby pool, which only happens on a filtered network. The router will not run there, so none of these lists decides anything.</string>
+    <string name="routing_lists_inert_blob">The rule blob has not been downloaded yet, so the router will not start and none of these lists decides anything. Connect once with global proxy off to fetch it.</string>
+    <string name="routing_status_active">in effect</string>
+    <string name="routing_status_unparseable">not a category, domain or CIDR</string>
+    <string name="routing_status_unknown">no category by that name in the catalogue</string>
+    <string name="routing_status_unavailable">published as too large to ship, so it is not in the catalogue</string>
+    <string name="routing_status_missing">not downloaded yet</string>
     <string name="routing_rules_hint">geosite:category\ngeoip:category\nexample.com\n10.0.0.0/8</string>
     <string name="routing_row_import">Import from Happ</string>
     <string name="routing_row_import_sub">Paste a happ://routing/add/\u2026 link</string>
@@ -273,6 +284,11 @@
     <string name="routing_profile_cache">Cached blob</string>
     <string name="routing_profile_none">none</string>
     <string name="routing_profile_counting">\u2026</string>
+    <string name="routing_row_categories">Category lists</string>
+    <string name="routing_row_categories_none">No geosite: or geoip: rules to fetch</string>
+    <string name="routing_row_categories_state" tools:ignore="PluralsCandidate">%1$d of %2$d resolved \u00b7 tap to fetch the rest</string>
+    <string name="routing_categories_updating">Fetching category lists\u2026</string>
+    <string name="routing_categories_result" tools:ignore="PluralsCandidate">%1$d of %2$d categories in effect</string>
 
     <string name="routing_section_order">Route order</string>
     <string name="routing_order_value">block \u2192 direct \u2192 proxy</string>

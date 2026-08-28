@@ -45,7 +45,7 @@ class RoutingSocksServerTest {
         origin.stop()
     }
 
-    private fun startRouter(rules: RuleSet): Int {
+    private fun startRouter(rules: RuleSet, overlay: UserRules = UserRules.EMPTY): Int {
         val port = freePort()
         server = RoutingSocksServer(
             listenPort = port,
@@ -53,6 +53,7 @@ class RoutingSocksServerTest {
             user = user,
             pass = pass,
             rules = rules,
+            overlay = overlay,
             protect = { socket -> protectedSockets.add(socket); true },
         ).also { it.start() }
         return port
@@ -127,7 +128,64 @@ class RoutingSocksServerTest {
         client.close()
     }
 
+    @Test fun `a user rule overrules the blob that disagrees with it`() {
+        // The blob would send this one direct; the user put it in the block
+        // list. Their line wins, or the lists are decoration.
+        val port = startRouter(
+            rules = rules(direct = setOf("ads.example")),
+            overlay = overlay(block = listOf("ads.example")),
+        )
+        val socket = Socket()
+        socket.connect(InetSocketAddress("127.0.0.1", port), 3000)
+        val input = DataInputStream(socket.getInputStream())
+        greet(socket, input)
+        request(socket, "ads.example", 80)
+        assertEquals("version", 5, input.read())
+        assertEquals("reply must be a refusal, not success", 2, input.read())
+        assertTrue(protectedSockets.isEmpty())
+        socket.close()
+    }
+
+    @Test fun `a user rule can undo a block the blob applied`() {
+        // The override has to work in both directions, or "user beats blob"
+        // only means "the user may add restrictions".
+        val port = startRouter(
+            rules = rules(block = setOf("blocked.example")),
+            overlay = overlay(proxy = listOf("blocked.example")),
+        )
+        val client = connect(port, "blocked.example", 80)
+        assertEquals("blocked.example", relay.lastRequestedHost.get())
+        client.close()
+    }
+
+    @Test fun `a user address rule beats the blob for a name it does not know`() {
+        // Nothing carries the name, so the decision has to come off the address
+        // it resolves to — and the user's prefix is asked before the blob's.
+        val port = startRouter(
+            rules = rules(),
+            overlay = overlay(block = listOf("127.0.0.0/8")),
+        )
+        val socket = Socket()
+        socket.connect(InetSocketAddress("127.0.0.1", port), 3000)
+        val input = DataInputStream(socket.getInputStream())
+        greet(socket, input)
+        request(socket, "127.0.0.1", origin.port)
+        assertEquals("version", 5, input.read())
+        assertEquals("reply must be a refusal, not success", 2, input.read())
+        assertTrue(relay.lastRequestedHost.get() == null)
+        socket.close()
+    }
+
     // ---- helpers ----------------------------------------------------------
+
+    private fun overlay(
+        proxy: List<String> = emptyList(),
+        direct: List<String> = emptyList(),
+        block: List<String> = emptyList(),
+    ): UserRules = UserRules.build(
+        RoutingConfig(globalProxy = false, proxy = proxy, direct = direct, block = block),
+        CategorySource.NONE,
+    )
 
     private fun rules(
         proxy: Set<String> = emptySet(),

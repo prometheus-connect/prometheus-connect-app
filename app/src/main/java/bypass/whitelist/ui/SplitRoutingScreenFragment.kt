@@ -18,8 +18,10 @@ import bypass.whitelist.R
 import bypass.whitelist.routing.Decision
 import bypass.whitelist.routing.HappRouting
 import bypass.whitelist.routing.RoutingConfig
+import bypass.whitelist.routing.RuleCatalogue
 import bypass.whitelist.routing.RuleKind
 import bypass.whitelist.routing.RuleSet
+import bypass.whitelist.routing.UserRules
 import bypass.whitelist.tunnel.SplitTunnelingMode
 import bypass.whitelist.tunnel.TunnelVpnService
 import bypass.whitelist.util.Prefs
@@ -39,6 +41,12 @@ import java.util.Date
  * compiled and published elsewhere and the order is wired into
  * [bypass.whitelist.routing.RoutingSocksServer], so offering them as settings
  * would be offering control that does not exist.
+ *
+ * The three lists follow the same rule. Each says how much of itself is in
+ * effect and names every line that is not, and when the router cannot run at
+ * all they open read-only with the reason. An editable field is a promise that
+ * what is typed into it will be acted on; the lists may only be editable while
+ * that promise holds.
  */
 class SplitRoutingScreenFragment : Fragment() {
 
@@ -46,11 +54,17 @@ class SplitRoutingScreenFragment : Fragment() {
     private lateinit var content: LinearLayout
 
     /**
-     * Filled in off the main thread. The cached blob is megabytes and parsing
-     * it is the only way to know how many rules it holds, which is not
+     * Filled in off the main thread, and null until it is.
+     *
+     * Both halves are megabytes on disk — the cached blob, and the category
+     * payloads the user's own lists name — and compiling the second is the only
+     * honest way to know which typed rules actually decide anything. Neither is
      * something a screen may do while it is being laid out.
      */
-    private var cachedRuleCount: Int? = null
+    private var snapshot: Snapshot? = null
+
+    /** What the router would be working from if it started right now. */
+    private class Snapshot(val blobRules: Int, val overlay: UserRules)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -71,7 +85,7 @@ class SplitRoutingScreenFragment : Fragment() {
         })
 
         rebuild()
-        countCachedRules()
+        loadSnapshot()
     }
 
     override fun onResume() {
@@ -122,9 +136,10 @@ class SplitRoutingScreenFragment : Fragment() {
     private fun buildRulesSection(config: RoutingConfig): View {
         val section = SettingsRows.newSection(this, content, R.string.routing_section_rules)
         val card = SettingsRows.card(section)
-        addRuleListRow(card, config, Decision.PROXY, R.string.routing_list_proxy, R.drawable.ic_setting_tunnel)
-        addRuleListRow(card, config, Decision.DIRECT, R.string.routing_list_direct, R.drawable.ic_setting_proxy)
-        addRuleListRow(card, config, Decision.BLOCK, R.string.routing_list_block, R.drawable.ic_setting_trash)
+        val inert = inertReason(config)
+        addRuleListRow(card, config, inert, Decision.PROXY, R.string.routing_list_proxy, R.drawable.ic_setting_tunnel)
+        addRuleListRow(card, config, inert, Decision.DIRECT, R.string.routing_list_direct, R.drawable.ic_setting_proxy)
+        addRuleListRow(card, config, inert, Decision.BLOCK, R.string.routing_list_block, R.drawable.ic_setting_trash)
         SettingsRows.addRow(
             this, card, R.drawable.ic_paste,
             getString(R.string.routing_row_import),
@@ -134,42 +149,86 @@ class SplitRoutingScreenFragment : Fragment() {
         return section
     }
 
+    /**
+     * Why none of the three lists is deciding anything, or null when they are.
+     *
+     * Each of these stops the router from starting at all, which makes all
+     * three lists inert whatever is typed into them. Null while the snapshot is
+     * still loading: claiming a list is dead before knowing would be its own
+     * kind of lie.
+     */
+    private fun inertReason(config: RoutingConfig): String? = when {
+        config.globalProxy -> getString(R.string.routing_lists_inert_global)
+        !Prefs.splitRoutingUsable -> getString(R.string.routing_lists_inert_pool)
+        snapshot?.blobRules == 0 -> getString(R.string.routing_lists_inert_blob)
+        else -> null
+    }
+
     private fun addRuleListRow(
         card: LinearLayout,
         config: RoutingConfig,
+        inert: String?,
         decision: Decision,
         titleRes: Int,
         iconRes: Int,
     ) {
         val rules = config.rulesFor(decision)
         val title = getString(titleRes)
-        SettingsRows.addRow(this, card, iconRes, title, describe(rules), rules.size.toString()) {
+        SettingsRows.addRow(this, card, iconRes, title, describe(rules, decision, inert), rules.size.toString()) {
             RuleListActionSheet.show(
                 manager = parentFragmentManager,
                 title = title,
-                subtitle = getString(R.string.routing_rules_sub),
+                subtitle = sheetSubtitle(decision, inert),
                 initialValue = RoutingConfig.formatList(rules),
+                readOnly = inert != null,
             ) { text ->
                 Prefs.routingConfig = Prefs.routingConfig
                     .withRules(decision, RoutingConfig.parseList(text))
                 notifyReconnectNeeded()
                 rebuild()
+                loadSnapshot()
             }
         }
     }
 
     /**
-     * A preview of the list plus, if there is one, the count of lines this app
-     * has no way to act on — a rule that will never match is worth saying out
-     * loud rather than leaving to look like every other line.
+     * A preview of the list, plus how much of it is actually deciding
+     * something. The number of rules and the number of rules in effect are not
+     * the same number, and only the second one is worth printing beside a list
+     * the user is about to trust.
      */
-    private fun describe(rules: List<String>): String {
+    private fun describe(rules: List<String>, decision: Decision, inert: String?): String {
         if (rules.isEmpty()) return getString(R.string.routing_list_empty)
         val preview = rules.take(PREVIEW_RULES).joinToString(", ") +
             if (rules.size > PREVIEW_RULES) "…" else ""
-        val unsupported = rules.count { RoutingConfig.kindOf(it) == RuleKind.UNSUPPORTED }
-        if (unsupported == 0) return preview
-        return preview + " · " + getString(R.string.routing_list_unsupported, unsupported)
+        if (inert != null) return preview + " · " + getString(R.string.routing_list_inert)
+        val entries = snapshot?.overlay?.entriesFor(decision) ?: return preview
+        val active = entries.count { it.isActive }
+        if (active == entries.size) return preview
+        return preview + " · " + getString(R.string.routing_list_effect, active, entries.size)
+    }
+
+    /**
+     * The editor states what it will and will not honour before a line is typed
+     * into it, entry by entry with the reason. Anything less is a text box that
+     * accepts rules and quietly drops half of them.
+     */
+    private fun sheetSubtitle(decision: Decision, inert: String?): String = buildString {
+        append(getString(R.string.routing_rules_sub))
+        if (inert != null) {
+            append("\n\n").append(inert)
+            return@buildString
+        }
+        val entries = snapshot?.overlay?.entriesFor(decision)
+        if (entries == null) {
+            append('\n').append(getString(R.string.routing_rules_checking))
+            return@buildString
+        }
+        val idle = entries.filter { !it.isActive }
+        append('\n').append(getString(R.string.routing_list_effect, entries.size - idle.size, entries.size))
+        idle.forEach {
+            append('\n').append(getString(R.string.routing_import_dropped_line, it.rule, getString(it.status.labelRes)))
+        }
     }
 
     private fun buildProfileSection(): View {
@@ -188,8 +247,9 @@ class SplitRoutingScreenFragment : Fragment() {
         SettingsRows.addInfoRow(
             this, card, R.drawable.ic_setting_split,
             getString(R.string.routing_profile_rules), null,
-            cachedRuleCount?.toString() ?: getString(R.string.routing_profile_counting),
+            snapshot?.blobRules?.toString() ?: getString(R.string.routing_profile_counting),
         )
+        addCategoriesRow(card)
 
         val cache = RuleSet.cacheFile(requireContext(), BuildConfig.PC_ROUTING_PROFILE)
         val cacheTrail = if (cache.isFile) {
@@ -306,18 +366,67 @@ class SplitRoutingScreenFragment : Fragment() {
 
     // ---- helpers ----------------------------------------------------------
 
-    private fun countCachedRules() {
+    /**
+     * A category the lists name but the cache has not got is reported as not in
+     * effect, and until the tunnel has come up once that is every one of them.
+     * This row is the way out of that: it says how many resolved and fetches
+     * the rest on demand, so the report can be acted on rather than only read.
+     */
+    private fun addCategoriesRow(card: LinearLayout) {
+        val named = snapshot?.overlay?.entries
+            ?.filter { it.kind == RuleKind.GEOSITE || it.kind == RuleKind.GEOIP }
+        val sub = when {
+            named == null -> getString(R.string.routing_profile_counting)
+            named.isEmpty() -> getString(R.string.routing_row_categories_none)
+            else -> getString(R.string.routing_row_categories_state, named.count { it.isActive }, named.size)
+        }
+        SettingsRows.addRow(
+            this, card, R.drawable.ic_arrow_down,
+            getString(R.string.routing_row_categories), sub, null,
+        ) {
+            Toast.makeText(requireContext(), R.string.routing_categories_updating, Toast.LENGTH_SHORT).show()
+            loadSnapshot(fetchCategories = true)
+        }
+    }
+
+    /**
+     * @param fetchCategories false everywhere except the row that asks for it.
+     * Opening a screen must not cost the user megabytes on a metered
+     * connection, so the report is built from the cache unless they say
+     * otherwise.
+     */
+    private fun loadSnapshot(fetchCategories: Boolean = false) {
         val context = requireContext().applicationContext
         val weakSelf = WeakReference(this)
         val host = activity ?: return
+        val config = Prefs.routingConfig
         Thread {
-            val count = RuleSet.loadCached(context, BuildConfig.PC_ROUTING_PROFILE).size
+            val blob = RuleSet.loadCached(context, BuildConfig.PC_ROUTING_PROFILE).size
+            val overlay = UserRules.build(
+                config,
+                RuleCatalogue.resolve(
+                    context,
+                    BuildConfig.PC_ROUTING_CATALOGUE_KEY,
+                    UserRules.categoriesIn(config),
+                    allowNetwork = fetchCategories,
+                ),
+            )
             if (weakSelf.get() == null) return@Thread
             host.runOnUiThread {
                 val self = weakSelf.get() ?: return@runOnUiThread
                 if (!self.isAdded) return@runOnUiThread
-                self.cachedRuleCount = count
+                self.snapshot = Snapshot(blob, overlay)
                 self.rebuild()
+                if (fetchCategories) {
+                    // The outcome, not "done": a fetch that reached nothing
+                    // still finishes, and saying so is the whole point.
+                    val named = overlay.entries.filter { it.kind == RuleKind.GEOSITE || it.kind == RuleKind.GEOIP }
+                    Toast.makeText(
+                        self.requireContext(),
+                        self.getString(R.string.routing_categories_result, named.count { it.isActive }, named.size),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
             }
         }.start()
     }
