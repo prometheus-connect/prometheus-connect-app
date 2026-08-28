@@ -38,6 +38,16 @@ class RoutingSocksServer(
     private val rules: RuleSet,
     /** VpnService.protect — without it a direct socket loops back into the tunnel. */
     private val protect: (Socket) -> Boolean,
+    /**
+     * Diagnostics into the app's own log, not just logcat.
+     *
+     * This server passed six integration tests and still carried nothing on a
+     * real device: the test client and the server were written by the same hand
+     * from the same reading of the spec, so a misreading agreed with itself.
+     * What is actually needed is a trace of the real tun2socks handshake, and
+     * it has to reach somewhere the user can send back.
+     */
+    private val trace: (String) -> Unit = {},
 ) {
 
     private val running = AtomicBoolean(false)
@@ -50,13 +60,14 @@ class RoutingSocksServer(
         socket.reuseAddress = true
         socket.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), listenPort))
         server = socket
-        Log.i(TAG, "routing socks on 127.0.0.1:$listenPort -> relay :$relayPort, ${rules.size} prefixes")
+        Log.i(TAG, "routing socks on 127.0.0.1:$listenPort -> relay :$relayPort, ${rules.size} rules")
+        trace("split routing: listening on 127.0.0.1:$listenPort, relay :$relayPort, ${rules.size} rules")
         thread(name = "routing-socks", isDaemon = true) {
             while (running.get()) {
                 val client = try {
                     socket.accept()
                 } catch (e: Exception) {
-                    if (running.get()) Log.w(TAG, "accept failed: ${e.message}")
+                    if (running.get()) trace("split routing: accept failed — ${e.message}")
                     break
                 }
                 pool.execute { runCatching { handle(client) }.onFailure { close(client) } }
@@ -77,7 +88,10 @@ class RoutingSocksServer(
         val input = DataInputStream(client.getInputStream().buffered())
         val output = client.getOutputStream()
 
-        if (!greet(input, output)) { close(client); return }
+        if (!greet(input, output)) {
+            trace("socks: greeting rejected")
+            close(client); return
+        }
 
         // Request: VER CMD RSV ATYP ADDR PORT
         val version = input.read()
@@ -85,7 +99,11 @@ class RoutingSocksServer(
         input.read() // reserved
         if (version != 5) { close(client); return }
         val atyp = input.read()
-        val (host, rawAddr) = readAddress(input, atyp) ?: run { close(client); return }
+        trace("socks: ver=$version cmd=$command atyp=$atyp")
+        val (host, rawAddr) = readAddress(input, atyp) ?: run {
+            trace("socks: unsupported address type $atyp")
+            close(client); return
+        }
         val port = (input.read() shl 8) or input.read()
 
         if (command != CMD_CONNECT) {
@@ -94,7 +112,9 @@ class RoutingSocksServer(
             return
         }
 
-        when (decide(atyp, host)) {
+        val verdict = decide(atyp, host)
+        trace("socks: $host:$port -> $verdict")
+        when (verdict) {
             Decision.BLOCK -> {
                 // Refuse rather than tunnel: an ad domain should cost nothing,
                 // least of all bandwidth on a 4-6 Mbit/s transport.
@@ -145,12 +165,14 @@ class RoutingSocksServer(
         runCatching { InetAddress.getByName(host) }.getOrNull()
 
     private fun greet(input: DataInputStream, output: OutputStream): Boolean {
-        if (input.read() != 5) return false
+        val ver = input.read()
+        if (ver != 5) { trace("socks: bad version byte $ver"); return false }
         val methods = input.read()
         val offered = ByteArray(methods)
         input.readFully(offered)
         // tun2socks is configured with the relay's credentials, so speak the
         // same dialect back at it rather than inventing a second convention.
+        trace("socks: client offers ${offered.joinToString(",") { it.toString() }}")
         return if (offered.contains(AUTH_USERPASS)) {
             output.write(byteArrayOf(5, AUTH_USERPASS)); output.flush()
             checkUserPass(input, output)
@@ -165,6 +187,7 @@ class RoutingSocksServer(
         val u = ByteArray(input.read()); input.readFully(u)
         val p = ByteArray(input.read()); input.readFully(p)
         val ok = String(u) == user && String(p) == pass
+        if (!ok) trace("socks: credentials rejected (user len=${u.size})")
         output.write(byteArrayOf(1, if (ok) 0 else 1)); output.flush()
         return ok
     }
@@ -226,6 +249,7 @@ class RoutingSocksServer(
 
             splice(client, relay, clientIn, relayIn, clientOut, relayOut)
         } catch (e: Exception) {
+            trace("socks: relay leg failed for $host:$port — ${e.message}")
             Log.w(TAG, "proxy $host:$port failed: ${e.message}")
             close(client); close(relay)
         }
@@ -243,6 +267,7 @@ class RoutingSocksServer(
             splice(client, remote, client.getInputStream(), remote.getInputStream(),
                 clientOut, remote.getOutputStream())
         } catch (e: Exception) {
+            trace("socks: direct dial failed for ${target.hostAddress}:$port — ${e.message}")
             runCatching {
                 clientOut.write(byteArrayOf(5, 5, 0, ATYP_IPV4.toByte(), 0, 0, 0, 0, 0, 0))
                 clientOut.flush()

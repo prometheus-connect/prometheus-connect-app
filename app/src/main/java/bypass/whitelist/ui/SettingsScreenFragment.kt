@@ -195,8 +195,13 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         addSwitchRow(card, R.drawable.ic_setting_reconnect, getString(R.string.settings_row_reconnect), getString(R.string.settings_row_reconnect_sub), Prefs.connectOnStart) { checked ->
             Prefs.connectOnStart = checked
         }
-        addSwitchRow(card, R.drawable.ic_setting_tunnel, getString(R.string.settings_row_split_routing), getString(R.string.settings_row_split_routing_sub), Prefs.splitRoutingEnabled) { checked ->
-            Prefs.splitRoutingEnabled = checked
+        // Hidden unless debug is on. It passed its tests and still killed the
+        // internet on a real device, so until that is understood it must not be
+        // reachable by anyone who has not deliberately gone looking for it.
+        if (Prefs.debug) {
+            addSwitchRow(card, R.drawable.ic_setting_tunnel, getString(R.string.settings_row_split_routing), getString(R.string.settings_row_split_routing_sub), Prefs.splitRoutingEnabled) { checked ->
+                Prefs.splitRoutingEnabled = checked
+            }
         }
         addSwitchRow(card, R.drawable.ic_setting_debug, getString(R.string.settings_row_debug), getString(R.string.settings_row_debug_sub), Prefs.debug) { checked ->
             Prefs.debug = checked

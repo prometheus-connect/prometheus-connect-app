@@ -296,6 +296,7 @@ class TunnelVpnService : VpnService() {
                 pass = SocksAuth.pass,
                 rules = rules,
                 protect = { socket -> protect(socket) },
+                trace = { line -> TunnelServiceState.logCallback?.invoke(line) },
             ).also { it.start() }
             port.toLong()
         } catch (e: Exception) {
