@@ -108,7 +108,6 @@
     <string name="settings_row_vp8_flag_kcp">kcp</string>
     <string name="settings_row_autofill">Autofill</string>
     <string name="settings_row_autofill_off">Off</string>
-    <string name="settings_row_split">Split tunneling</string>
     <string name="settings_row_proxy">Proxy</string>
     <string name="settings_row_proxy_sub">SOCKS5 port %1$d</string>
     <string name="settings_row_dns">DNS</string>
@@ -204,7 +203,8 @@
     <string name="settings_row_version">Version</string>
     <string name="settings_row_version_copied">Version copied</string>
     <string name="settings_row_split_routing">Split routing</string>
-    <string name="settings_row_split_routing_sub">Send only blocked sites through the tunnel. Ignored on networks where direct traffic goes nowhere.</string>
+    <string name="settings_row_split_routing_force">Split routing (force)</string>
+    <string name="settings_row_split_routing_force_sub">Debug: run the router even when the session came from the standby pool. On a whitelist network this sends unmatched traffic nowhere.</string>
     <string name="cors_status_pool">Service unreachable — using a standby call</string>
     <string name="cors_status_disabled">App API disabled on the server</string>
     <string name="cors_status_token_missing">App token not configured</string>
@@ -243,4 +243,53 @@
     <string name="fgs_justification_vpn">Manages VPN tunnel for network traffic bypass and routing.</string>
     <string name="fgs_justification_proxy">Maintains a local SOCKS5 proxy server for traffic redirection.</string>
     <string name="fgs_justification_headless">Manages a headless session state for persistent tunnel operation.</string>
+    <!-- Split routing screen -->
+    <string name="routing_title">Split routing</string>
+    <string name="routing_summary_global">Global proxy</string>
+    <plurals name="routing_summary_split">
+        <item quantity="one">Split by rules \u00b7 %d rule</item>
+        <item quantity="other">Split by rules \u00b7 %d rules</item>
+    </plurals>
+
+    <string name="routing_section_mode">Mode</string>
+    <string name="routing_global_proxy">Global proxy</string>
+    <string name="routing_global_proxy_sub">Everything goes through the tunnel. Off splits traffic by the rules below.</string>
+
+    <string name="routing_section_rules">Rules</string>
+    <string name="routing_list_proxy">Proxy</string>
+    <string name="routing_list_direct">Direct</string>
+    <string name="routing_list_block">Block</string>
+    <string name="routing_list_empty">Empty</string>
+    <string name="routing_list_unsupported" tools:ignore="PluralsCandidate">%1$d not understood</string>
+    <string name="routing_rules_sub">One rule per line.</string>
+    <string name="routing_rules_hint">geosite:category\ngeoip:category\nexample.com\n10.0.0.0/8</string>
+    <string name="routing_row_import">Import from Happ</string>
+    <string name="routing_row_import_sub">Paste a happ://routing/add/\u2026 link</string>
+
+    <string name="routing_section_profile">Profile</string>
+    <string name="routing_profile_name">Profile</string>
+    <string name="routing_profile_revision">Revision</string>
+    <string name="routing_profile_rules">Rules loaded</string>
+    <string name="routing_profile_cache">Cached blob</string>
+    <string name="routing_profile_none">none</string>
+    <string name="routing_profile_counting">\u2026</string>
+
+    <string name="routing_section_order">Route order</string>
+    <string name="routing_order_value">block \u2192 direct \u2192 proxy</string>
+    <string name="routing_order_sub">Blocked names are refused, direct names are dialled outside the tunnel, everything else takes it.</string>
+
+    <string name="routing_section_apps">Apps</string>
+    <string name="routing_row_per_app">Per app routing</string>
+
+    <string name="routing_import_title">Import routing rules</string>
+    <string name="routing_import_sub">Paste a Happ routing link. Nothing is applied until you have seen what it carries.</string>
+    <string name="routing_import_field">Link</string>
+    <string name="routing_import_apply">Apply</string>
+    <string name="routing_import_failed">Cannot read the link: %1$s</string>
+    <string name="routing_import_counts">%1$d applied, %2$d dropped</string>
+    <string name="routing_import_global_on">Global proxy: on</string>
+    <string name="routing_import_global_off">Global proxy: off</string>
+    <string name="routing_import_nothing_dropped">Nothing was dropped.</string>
+    <string name="routing_import_dropped_header">Dropped:</string>
+    <string name="routing_import_dropped_line">\u2022 %1$s \u2014 %2$s</string>
 </resources>

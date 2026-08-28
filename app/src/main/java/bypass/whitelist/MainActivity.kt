@@ -708,12 +708,17 @@ class MainActivity :
             .commit()
     }
 
+    /**
+     * Pops one level, not the whole stack. Sub-pages nest now — per-app routing
+     * opens from inside split routing — and every entry carries the same tag,
+     * so popping by tag with POP_BACK_STACK_INCLUSIVE would consume both and
+     * drop the user back to Settings from one screen down.
+     */
     override fun popSubPage() {
-        supportFragmentManager.popBackStackImmediate(
-            SUB_PAGE_TAG,
-            FragmentManager.POP_BACK_STACK_INCLUSIVE
-        )
-        subPageContainer.visibility = View.GONE
+        supportFragmentManager.popBackStackImmediate()
+        if (supportFragmentManager.backStackEntryCount == 0) {
+            subPageContainer.visibility = View.GONE
+        }
     }
 
     override fun onJoinCancel() {

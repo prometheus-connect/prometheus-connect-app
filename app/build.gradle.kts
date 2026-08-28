@@ -7,7 +7,7 @@ plugins {
 
 val versionMajor = 1
 val versionMinor = 3
-val versionPatch = 4
+val versionPatch = 5
 val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 
 // versionCode is deliberately NOT derived from the version name. Android
@@ -16,7 +16,7 @@ val versionBuild = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 0
 // Deriving it would have produced 1000000 for this release and forced everyone
 // who tested to uninstall first. Keep it a plain monotonic counter: bump it by
 // one for every build that leaves this machine, whatever the version name says.
-val versionCodeCounter = 1001018
+val versionCodeCounter = 1001019
 
 // ---- Prometheus Connect service configuration --------------------------------
 // Values are resolved in this order: environment variable -> local.properties
@@ -183,6 +183,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.zxing.android.embedded)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

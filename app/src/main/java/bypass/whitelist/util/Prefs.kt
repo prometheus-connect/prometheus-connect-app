@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import bypass.whitelist.BuildConfig
+import bypass.whitelist.routing.RoutingConfig
 import bypass.whitelist.tunnel.CallConfig
 import bypass.whitelist.tunnel.SplitTunnelingMode
 import bypass.whitelist.tunnel.TunnelMode
@@ -137,8 +138,67 @@ object Prefs {
         get() = prefs.getBoolean(PrefsKeys.SESSION_USED_POOL, false)
         set(value) = prefs.edit { putBoolean(PrefsKeys.SESSION_USED_POOL, value) }
 
+    /**
+     * Debug override for the [lastSessionUsedPool] guard.
+     *
+     * On some networks every session bootstraps from the pool, which makes the
+     * guard permanent and split routing impossible to exercise even once. This
+     * lifts it — and nothing else — so the feature can be tested at all. It is
+     * reachable only with [debug] on, and the guard stays the default.
+     */
+    var splitRoutingForce: Boolean
+        get() = prefs.getBoolean(PrefsKeys.SPLIT_ROUTING_FORCE, false)
+        set(value) = prefs.edit { putBoolean(PrefsKeys.SPLIT_ROUTING_FORCE, value) }
+
     /** The toggle only takes effect when the network can carry direct traffic. */
-    val splitRoutingUsable: Boolean get() = splitRoutingEnabled && !lastSessionUsedPool
+    val splitRoutingUsable: Boolean
+        get() = splitRoutingEnabled && (!lastSessionUsedPool || splitRoutingForce)
+
+    /**
+     * The switch as the routing screen puts it: on means every destination
+     * takes the tunnel. It is the same state as [splitRoutingEnabled] read from
+     * the other side — one flag, so the screen and the service can never
+     * disagree about what is on.
+     */
+    var routingGlobalProxy: Boolean
+        get() = !splitRoutingEnabled
+        set(value) { splitRoutingEnabled = !value }
+
+    /**
+     * The three rule lists, one rule per line.
+     *
+     * An absent key means the user has never opened the screen, so the shipped
+     * profile is handed back; an empty string means they emptied the list on
+     * purpose and is returned as it stands.
+     */
+    var routingProxyRules: String
+        get() = prefs.getString(PrefsKeys.ROUTING_PROXY_RULES, null)
+            ?: RoutingConfig.formatList(RoutingConfig.DEFAULT.proxy)
+        set(value) = prefs.edit { putString(PrefsKeys.ROUTING_PROXY_RULES, value) }
+
+    var routingDirectRules: String
+        get() = prefs.getString(PrefsKeys.ROUTING_DIRECT_RULES, null)
+            ?: RoutingConfig.formatList(RoutingConfig.DEFAULT.direct)
+        set(value) = prefs.edit { putString(PrefsKeys.ROUTING_DIRECT_RULES, value) }
+
+    var routingBlockRules: String
+        get() = prefs.getString(PrefsKeys.ROUTING_BLOCK_RULES, null)
+            ?: RoutingConfig.formatList(RoutingConfig.DEFAULT.block)
+        set(value) = prefs.edit { putString(PrefsKeys.ROUTING_BLOCK_RULES, value) }
+
+    var routingConfig: RoutingConfig
+        get() = RoutingConfig(
+            globalProxy = routingGlobalProxy,
+            proxy = RoutingConfig.parseList(routingProxyRules),
+            direct = RoutingConfig.parseList(routingDirectRules),
+            block = RoutingConfig.parseList(routingBlockRules),
+        )
+        set(value) {
+            routingGlobalProxy = value.globalProxy
+            routingProxyRules = RoutingConfig.formatList(value.proxy)
+            routingDirectRules = RoutingConfig.formatList(value.direct)
+            routingBlockRules = RoutingConfig.formatList(value.block)
+        }
 
     /** Upstream revision the cached rule blob was built from. */
     var routingRulesRevision: String

@@ -275,6 +275,11 @@ class TunnelVpnService : VpnService() {
      */
     private fun startRoutingIfEnabled(): Long {
         if (!Prefs.splitRoutingUsable) return Prefs.socksPort
+        if (Prefs.splitRoutingForce && Prefs.lastSessionUsedPool) {
+            // Worth a line in the log: this session bootstrapped off the pool,
+            // so whatever the rules send direct may reach nothing at all.
+            Log.w(TAG, "split routing forced past the pool guard")
+        }
         val rules = RuleSet.load(
             applicationContext,
             BuildConfig.PC_ROUTING_MANIFEST_KEY,

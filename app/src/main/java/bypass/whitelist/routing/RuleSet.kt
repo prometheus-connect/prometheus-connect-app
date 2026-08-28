@@ -114,9 +114,26 @@ class RuleSet private constructor(
          * no rules, and the caller treats "no rules" as "tunnel everything".
          */
         fun load(context: Context, manifestKey: String, blobKey: String, profile: String): RuleSet {
-            val cache = File(context.filesDir, "routing-$profile.bin")
+            val cache = cacheFile(context, profile)
             runCatching { refresh(manifestKey, blobKey, profile, cache) }
                 .onFailure { Log.w(TAG, "rule refresh skipped: ${it.message}") }
+            if (!cache.isFile) return EMPTY
+            return runCatching { parse(cache.readBytes()) }
+                .onFailure { Log.w(TAG, "rule parse failed: ${it.message}") }
+                .getOrDefault(EMPTY)
+        }
+
+        /** Where the blob lands, so a screen can report its size and age. */
+        fun cacheFile(context: Context, profile: String): File =
+            File(context.filesDir, "routing-$profile.bin")
+
+        /**
+         * Whatever is already on disk, without touching the network. The
+         * settings screen reports on the cache; making that report refresh it
+         * would turn opening a screen into a 5 MB download.
+         */
+        fun loadCached(context: Context, profile: String): RuleSet {
+            val cache = cacheFile(context, profile)
             if (!cache.isFile) return EMPTY
             return runCatching { parse(cache.readBytes()) }
                 .onFailure { Log.w(TAG, "rule parse failed: ${it.message}") }

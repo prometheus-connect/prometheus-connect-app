@@ -3,14 +3,11 @@ package bypass.whitelist.ui
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.view.isNotEmpty
 import androidx.fragment.app.Fragment
 import bypass.whitelist.App
 import bypass.whitelist.R
-import bypass.whitelist.tunnel.SplitTunnelingMode
 import bypass.whitelist.tunnel.TunnelMode
 import bypass.whitelist.util.Callback
 import bypass.whitelist.util.ParamCallback
@@ -21,7 +18,6 @@ import android.widget.Toast
 import bypass.whitelist.BuildConfig
 import bypass.whitelist.util.Prefs
 import bypass.whitelist.util.ThemeMode
-import com.google.android.material.materialswitch.MaterialSwitch
 
 class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
 
@@ -165,13 +161,17 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         val section = newSection(R.string.settings_section_network)
         val card = section.findViewById<LinearLayout>(R.id.sectionCard)
 
-        val splitSummary = if (Prefs.splitTunnelingMode == SplitTunnelingMode.NONE) {
-            Prefs.splitTunnelingMode.label
+        // Per-app split tunneling lives one level deeper now, under the routing
+        // screen: both answer "what skips the tunnel", and two sibling entries
+        // asking that question had no way to say how they differed.
+        val routing = Prefs.routingConfig
+        val routingSummary = if (routing.globalProxy) {
+            getString(R.string.routing_summary_global)
         } else {
-            resources.getQuantityString(R.plurals.split_tunneling_summary_count, Prefs.splitTunnelingPackages.size, Prefs.splitTunnelingMode.label, Prefs.splitTunnelingPackages.size)
+            resources.getQuantityString(R.plurals.routing_summary_split, routing.ruleCount, routing.ruleCount)
         }
-        addRow(card, R.drawable.ic_setting_split, getString(R.string.settings_row_split), splitSummary, null) {
-            (activity as? MainActivityHost)?.pushSubPage(SplitTunnelingScreenFragment())
+        addRow(card, R.drawable.ic_setting_split, getString(R.string.settings_row_split_routing), routingSummary, null) {
+            (activity as? MainActivityHost)?.pushSubPage(SplitRoutingScreenFragment())
         }
 
         addRow(card, R.drawable.ic_setting_proxy, getString(R.string.settings_row_proxy), getString(R.string.settings_row_proxy_sub, Prefs.socksPort), null) {
@@ -195,12 +195,13 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         addSwitchRow(card, R.drawable.ic_setting_reconnect, getString(R.string.settings_row_reconnect), getString(R.string.settings_row_reconnect_sub), Prefs.connectOnStart) { checked ->
             Prefs.connectOnStart = checked
         }
-        // Hidden unless debug is on. It passed its tests and still killed the
-        // internet on a real device, so until that is understood it must not be
-        // reachable by anyone who has not deliberately gone looking for it.
+        // Hidden unless debug is on. Lifting the pool guard is how the router
+        // gets exercised at all on a network that bootstraps from the pool every
+        // time — and it is also how someone strands themselves on a whitelist
+        // tariff, so it stays out of reach of anyone not looking for it.
         if (Prefs.debug) {
-            addSwitchRow(card, R.drawable.ic_setting_tunnel, getString(R.string.settings_row_split_routing), getString(R.string.settings_row_split_routing_sub), Prefs.splitRoutingEnabled) { checked ->
-                Prefs.splitRoutingEnabled = checked
+            addSwitchRow(card, R.drawable.ic_setting_tunnel, getString(R.string.settings_row_split_routing_force), getString(R.string.settings_row_split_routing_force_sub), Prefs.splitRoutingForce) { checked ->
+                Prefs.splitRoutingForce = checked
             }
         }
         addSwitchRow(card, R.drawable.ic_setting_debug, getString(R.string.settings_row_debug), getString(R.string.settings_row_debug_sub), Prefs.debug) { checked ->
@@ -247,13 +248,8 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         return section
     }
 
-    private fun newSection(labelRes: Int): View {
-        val parent = view as ViewGroup?
-        val v = layoutInflater.inflate(R.layout.item_settings_section, parent, false)
-        v.findViewById<TextView>(R.id.sectionLabel).setText(labelRes)
-        v.findViewById<View>(R.id.sectionCard).clipToOutline = true
-        return v
-    }
+    private fun newSection(labelRes: Int): View =
+        SettingsRows.newSection(this, view as ViewGroup?, labelRes)
 
     private fun addRow(
         card: LinearLayout,
@@ -263,26 +259,7 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         trail: String?,
         danger: Boolean = false,
         onClick: Callback,
-    ) {
-        val row = layoutInflater.inflate(R.layout.item_settings_row, card, false)
-        row.findViewById<ImageView>(R.id.rowIcon).setImageResource(iconRes)
-        if (danger) {
-            row.findViewById<View>(R.id.rowIconBox).setBackgroundResource(R.drawable.bg_settings_row_icon_danger)
-            row.findViewById<ImageView>(R.id.rowIcon).setColorFilter(requireContext().getColor(R.color.error_red))
-            row.findViewById<TextView>(R.id.rowTitle).setTextColor(requireContext().getColor(R.color.error_red))
-        }
-        row.findViewById<TextView>(R.id.rowTitle).text = title
-        row.findViewById<TextView>(R.id.rowSub).apply {
-            if (sub.isNullOrBlank()) { visibility = View.GONE } else { text = sub; visibility = View.VISIBLE }
-        }
-        row.findViewById<TextView>(R.id.rowTrail).apply {
-            if (trail.isNullOrBlank()) { visibility = View.GONE } else { text = trail; visibility = View.VISIBLE }
-        }
-        row.findViewById<ImageView>(R.id.rowChev).visibility = View.VISIBLE
-        row.setOnClickListener { onClick() }
-        if (card.isNotEmpty()) addDividerTo(card)
-        card.addView(row)
-    }
+    ) = SettingsRows.addRow(this, card, iconRes, title, sub, trail, danger, onClick)
 
     private fun addSwitchRow(
         card: LinearLayout,
@@ -291,34 +268,7 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         sub: String?,
         initial: Boolean,
         onToggled: ParamCallback<Boolean>,
-    ) {
-        val row = layoutInflater.inflate(R.layout.item_settings_row, card, false)
-        row.findViewById<ImageView>(R.id.rowIcon).setImageResource(iconRes)
-        row.findViewById<TextView>(R.id.rowTitle).text = title
-        row.findViewById<TextView>(R.id.rowSub).apply {
-            if (sub.isNullOrBlank()) { visibility = View.GONE } else { text = sub; visibility = View.VISIBLE }
-        }
-        val sw = row.findViewById<MaterialSwitch>(R.id.rowSwitch)
-        sw.visibility = View.VISIBLE
-        sw.isChecked = initial
-        row.setOnClickListener {
-            sw.isChecked = !sw.isChecked
-            onToggled(sw.isChecked)
-        }
-        if (card.isNotEmpty()) addDividerTo(card)
-        card.addView(row)
-    }
-
-    private fun addDividerTo(card: LinearLayout) {
-        val divider = View(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).apply {
-                marginStart = (14 * resources.displayMetrics.density).toInt()
-                marginEnd = (14 * resources.displayMetrics.density).toInt()
-            }
-            setBackgroundColor(requireContext().getColor(R.color.hair))
-        }
-        card.addView(divider)
-    }
+    ) = SettingsRows.addSwitchRow(this, card, iconRes, title, sub, initial, onToggled)
 
     private fun rebuild() {
         if (!isAdded) return
