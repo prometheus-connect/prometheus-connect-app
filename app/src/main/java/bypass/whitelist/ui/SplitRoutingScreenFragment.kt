@@ -32,10 +32,10 @@ import java.util.Date
 /**
  * Everything that decides where a connection goes, on one screen.
  *
- * The switch at the top is the only thing most people will ever touch: global
- * proxy on means the tunnel carries everything, which is what the app has
- * always done and stays the default. Off hands the decision to the three lists
- * below it.
+ * The switch at the top is the only thing most people will ever touch, and it
+ * is named for what it turns on. Off means the tunnel carries everything,
+ * which is what the app has always done and stays the default; on hands the
+ * decision to the three lists below it.
  *
  * The profile and route-order rows are read-only on purpose. The rule blob is
  * compiled and published elsewhere and the order is wired into
@@ -104,10 +104,10 @@ class SplitRoutingScreenFragment : Fragment() {
     private fun rebuild() {
         if (!isAdded) return
         val config = Prefs.routingConfig
-        summary.text = if (config.globalProxy) {
-            getString(R.string.routing_summary_global)
-        } else {
+        summary.text = if (config.splitRouting) {
             resources.getQuantityString(R.plurals.routing_summary_split, config.ruleCount, config.ruleCount)
+        } else {
+            getString(R.string.routing_summary_off)
         }
         content.removeAllViews()
         content.addView(buildModeSection(config))
@@ -121,12 +121,12 @@ class SplitRoutingScreenFragment : Fragment() {
         val section = SettingsRows.newSection(this, content, R.string.routing_section_mode)
         val card = SettingsRows.card(section)
         SettingsRows.addSwitchRow(
-            this, card, R.drawable.ic_setting_tunnel,
-            getString(R.string.routing_global_proxy),
-            getString(R.string.routing_global_proxy_sub),
-            config.globalProxy,
+            this, card, R.drawable.ic_setting_split,
+            getString(R.string.routing_split_switch),
+            getString(R.string.routing_split_switch_sub),
+            config.splitRouting,
         ) { checked ->
-            Prefs.routingGlobalProxy = checked
+            Prefs.splitRoutingEnabled = checked
             notifyReconnectNeeded()
             rebuild()
         }
@@ -158,7 +158,7 @@ class SplitRoutingScreenFragment : Fragment() {
      * kind of lie.
      */
     private fun inertReason(config: RoutingConfig): String? = when {
-        config.globalProxy -> getString(R.string.routing_lists_inert_global)
+        !config.splitRouting -> getString(R.string.routing_lists_inert_off)
         !Prefs.splitRoutingUsable -> getString(R.string.routing_lists_inert_pool)
         snapshot?.blobRules == 0 -> getString(R.string.routing_lists_inert_blob)
         else -> null
@@ -339,8 +339,8 @@ class SplitRoutingScreenFragment : Fragment() {
             append(getString(R.string.routing_import_counts, result.applied.size, result.dropped.size))
             append('\n')
             append(
-                if (result.config.globalProxy) getString(R.string.routing_import_global_on)
-                else getString(R.string.routing_import_global_off)
+                if (result.config.splitRouting) getString(R.string.routing_import_split_on)
+                else getString(R.string.routing_import_split_off)
             )
             if (result.dropped.isEmpty()) {
                 append("\n\n").append(getString(R.string.routing_import_nothing_dropped))

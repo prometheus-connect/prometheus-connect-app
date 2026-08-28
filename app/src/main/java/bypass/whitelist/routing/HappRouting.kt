@@ -72,8 +72,10 @@ object HappRouting {
         val direct = collect("DirectSites", "DirectIp")
         val block = collect("BlockSites", "BlockIp")
 
-        // Everything through the tunnel is the safe reading of a missing flag:
-        // a config that forgot to say loses speed, never cover.
+        // Happ names the flag from the other side: its GlobalProxy on is this
+        // app's split routing off. Everything through the tunnel is the safe
+        // reading of a missing flag — a config that forgot to say loses speed,
+        // never cover.
         val globalProxy = readFlag(json, "GlobalProxy", fallback = true)
 
         // Both are structural here, not settings, so they cannot be honoured
@@ -85,7 +87,7 @@ object HappRouting {
             ?.let { dropped += Dropped("DomainStrategy: $it", REASON_DOMAIN_STRATEGY) }
 
         return Import(
-            config = RoutingConfig(globalProxy, proxy, direct, block),
+            config = RoutingConfig(splitRouting = !globalProxy, proxy = proxy, direct = direct, block = block),
             applied = applied,
             dropped = dropped,
         )

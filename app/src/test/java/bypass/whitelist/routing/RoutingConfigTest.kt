@@ -29,8 +29,8 @@ class RoutingConfigTest {
         )
         assertEquals(listOf("geosite:private", "geoip:private"), RoutingConfig.DEFAULT.direct)
         assertEquals(listOf("geosite:category-ads"), RoutingConfig.DEFAULT.block)
-        // Global proxy on: an untouched install keeps tunnelling everything.
-        assertEquals(true, RoutingConfig.DEFAULT.globalProxy)
+        // Split routing off: an untouched install keeps tunnelling everything.
+        assertEquals(false, RoutingConfig.DEFAULT.splitRouting)
     }
 
     @Test

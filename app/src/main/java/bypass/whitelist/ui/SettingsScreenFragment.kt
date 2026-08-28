@@ -165,10 +165,10 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
         // screen: both answer "what skips the tunnel", and two sibling entries
         // asking that question had no way to say how they differed.
         val routing = Prefs.routingConfig
-        val routingSummary = if (routing.globalProxy) {
-            getString(R.string.routing_summary_global)
-        } else {
+        val routingSummary = if (routing.splitRouting) {
             resources.getQuantityString(R.plurals.routing_summary_split, routing.ruleCount, routing.ruleCount)
+        } else {
+            getString(R.string.routing_summary_off)
         }
         addRow(card, R.drawable.ic_setting_split, getString(R.string.settings_row_split_routing), routingSummary, null) {
             (activity as? MainActivityHost)?.pushSubPage(SplitRoutingScreenFragment())

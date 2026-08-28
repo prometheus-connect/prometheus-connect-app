@@ -155,16 +155,6 @@ object Prefs {
         get() = splitRoutingEnabled && (!lastSessionUsedPool || splitRoutingForce)
 
     /**
-     * The switch as the routing screen puts it: on means every destination
-     * takes the tunnel. It is the same state as [splitRoutingEnabled] read from
-     * the other side — one flag, so the screen and the service can never
-     * disagree about what is on.
-     */
-    var routingGlobalProxy: Boolean
-        get() = !splitRoutingEnabled
-        set(value) { splitRoutingEnabled = !value }
-
-    /**
      * The three rule lists, one rule per line.
      *
      * An absent key means the user has never opened the screen, so the shipped
@@ -188,13 +178,13 @@ object Prefs {
 
     var routingConfig: RoutingConfig
         get() = RoutingConfig(
-            globalProxy = routingGlobalProxy,
+            splitRouting = splitRoutingEnabled,
             proxy = RoutingConfig.parseList(routingProxyRules),
             direct = RoutingConfig.parseList(routingDirectRules),
             block = RoutingConfig.parseList(routingBlockRules),
         )
         set(value) {
-            routingGlobalProxy = value.globalProxy
+            splitRoutingEnabled = value.splitRouting
             routingProxyRules = RoutingConfig.formatList(value.proxy)
             routingDirectRules = RoutingConfig.formatList(value.direct)
             routingBlockRules = RoutingConfig.formatList(value.block)

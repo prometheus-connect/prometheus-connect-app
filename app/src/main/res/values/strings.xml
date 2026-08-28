@@ -246,15 +246,15 @@
     <string name="fgs_justification_headless">Manages a headless session state for persistent tunnel operation.</string>
     <!-- Split routing screen -->
     <string name="routing_title">Split routing</string>
-    <string name="routing_summary_global">Global proxy</string>
+    <string name="routing_summary_off">Off \u00b7 everything through the tunnel</string>
     <plurals name="routing_summary_split">
         <item quantity="one">Split by rules \u00b7 %d rule</item>
         <item quantity="other">Split by rules \u00b7 %d rules</item>
     </plurals>
 
     <string name="routing_section_mode">Mode</string>
-    <string name="routing_global_proxy">Global proxy</string>
-    <string name="routing_global_proxy_sub">Everything goes through the tunnel. Off splits traffic by the rules below.</string>
+    <string name="routing_split_switch">Split routing</string>
+    <string name="routing_split_switch_sub">Off, everything goes through the tunnel. On, traffic is split by the rules below.</string>
 
     <string name="routing_section_rules">Rules</string>
     <string name="routing_list_proxy">Proxy</string>
@@ -265,9 +265,9 @@
     <string name="routing_rules_checking">Checking which of these are in effect\u2026</string>
     <string name="routing_list_effect" tools:ignore="PluralsCandidate">%1$d of %2$d in effect</string>
     <string name="routing_list_inert">not in effect</string>
-    <string name="routing_lists_inert_global">Global proxy is on, so every destination takes the tunnel and none of these lists decides anything. Turn it off above to route by them.</string>
+    <string name="routing_lists_inert_off">Split routing is off, so every destination takes the tunnel and none of these lists decides anything. Turn it on above to route by them.</string>
     <string name="routing_lists_inert_pool">This session started from the standby pool, which only happens on a filtered network. The router will not run there, so none of these lists decides anything.</string>
-    <string name="routing_lists_inert_blob">The rule blob has not been downloaded yet, so the router will not start and none of these lists decides anything. Connect once with global proxy off to fetch it.</string>
+    <string name="routing_lists_inert_blob">The rule blob has not been downloaded yet, so the router will not start and none of these lists decides anything. Connect once with split routing on to fetch it.</string>
     <string name="routing_status_active">in effect</string>
     <string name="routing_status_unparseable">not a category, domain or CIDR</string>
     <string name="routing_status_unknown">no category by that name in the catalogue</string>
@@ -303,8 +303,8 @@
     <string name="routing_import_apply">Apply</string>
     <string name="routing_import_failed">Cannot read the link: %1$s</string>
     <string name="routing_import_counts">%1$d applied, %2$d dropped</string>
-    <string name="routing_import_global_on">Global proxy: on</string>
-    <string name="routing_import_global_off">Global proxy: off</string>
+    <string name="routing_import_split_on">Split routing: on</string>
+    <string name="routing_import_split_off">Split routing: off</string>
     <string name="routing_import_nothing_dropped">Nothing was dropped.</string>
     <string name="routing_import_dropped_header">Dropped:</string>
     <string name="routing_import_dropped_line">\u2022 %1$s \u2014 %2$s</string>

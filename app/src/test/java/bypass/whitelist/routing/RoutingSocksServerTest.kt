@@ -183,7 +183,7 @@ class RoutingSocksServerTest {
         direct: List<String> = emptyList(),
         block: List<String> = emptyList(),
     ): UserRules = UserRules.build(
-        RoutingConfig(globalProxy = false, proxy = proxy, direct = direct, block = block),
+        RoutingConfig(splitRouting = true, proxy = proxy, direct = direct, block = block),
         CategorySource.NONE,
     )
 

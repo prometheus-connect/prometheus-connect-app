@@ -19,13 +19,13 @@ enum class RuleKind { GEOSITE, GEOIP, DOMAIN, CIDR, UNSUPPORTED }
  * something that was meant. Classification happens per line, on demand, so a
  * line nobody can honour is *reported* instead of vanishing.
  *
- * [globalProxy] is the inverse of split routing: on, everything takes the
- * tunnel and the lists are inert. That is the default, and deliberately so —
- * see `Prefs.splitRoutingEnabled` for why sending traffic direct is the
- * dangerous side to guess wrong on.
+ * [splitRouting] is the master switch, the same state the user sees on the
+ * screen: off, everything takes the tunnel and the lists are inert. Off is the
+ * default, and deliberately so — see `Prefs.splitRoutingEnabled` for why
+ * sending traffic direct is the dangerous side to guess wrong on.
  */
 data class RoutingConfig(
-    val globalProxy: Boolean,
+    val splitRouting: Boolean,
     val proxy: List<String>,
     val direct: List<String>,
     val block: List<String>,
@@ -55,12 +55,12 @@ data class RoutingConfig(
         /**
          * The light profile the project ships, seeded on first run.
          *
-         * Not an empty config: with global proxy off and no proxy rules every
+         * Not an empty config: with split routing on and no proxy rules every
          * destination would look unmatched and go direct, which is the one
          * outcome nobody switching this on is asking for.
          */
         val DEFAULT = RoutingConfig(
-            globalProxy = true,
+            splitRouting = false,
             proxy = listOf(
                 "geosite:ru-blocked",
                 "myanimelist.net",

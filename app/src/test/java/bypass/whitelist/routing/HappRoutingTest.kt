@@ -84,16 +84,21 @@ class HappRoutingTest {
         assertTrue(result.applied.none { rule -> dropped.contains(rule) })
     }
 
+    /**
+     * The one place the two vocabularies meet: Happ's GlobalProxy on is this
+     * app's split routing off, and getting that backwards would send a whole
+     * imported profile the wrong way round without failing anything.
+     */
     @Test
-    fun `global proxy is read whether it is a boolean or a word`() {
-        assertFalse(HappRouting.parse(link).config.globalProxy)
-        assertTrue(HappRouting.parse(linkOf("{\"GlobalProxy\":true}")).config.globalProxy)
-        assertFalse(HappRouting.parse(linkOf("{\"GlobalProxy\":false}")).config.globalProxy)
-        assertTrue(HappRouting.parse(linkOf("{\"GlobalProxy\":\"TRUE\"}")).config.globalProxy)
-        assertFalse(HappRouting.parse(linkOf("{\"GlobalProxy\":\"false\"}")).config.globalProxy)
+    fun `global proxy is read whether it is a boolean or a word, and inverted`() {
+        assertTrue(HappRouting.parse(link).config.splitRouting)
+        assertFalse(HappRouting.parse(linkOf("{\"GlobalProxy\":true}")).config.splitRouting)
+        assertTrue(HappRouting.parse(linkOf("{\"GlobalProxy\":false}")).config.splitRouting)
+        assertFalse(HappRouting.parse(linkOf("{\"GlobalProxy\":\"TRUE\"}")).config.splitRouting)
+        assertTrue(HappRouting.parse(linkOf("{\"GlobalProxy\":\"false\"}")).config.splitRouting)
         // Absent means everything through the tunnel: a config that forgot to
         // say costs speed, never cover.
-        assertTrue(HappRouting.parse(linkOf("{}")).config.globalProxy)
+        assertFalse(HappRouting.parse(linkOf("{}")).config.splitRouting)
     }
 
     @Test

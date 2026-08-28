@@ -173,7 +173,7 @@ class UserRulesTest {
         proxy: List<String> = emptyList(),
         direct: List<String> = emptyList(),
         block: List<String> = emptyList(),
-    ) = RoutingConfig(globalProxy = false, proxy = proxy, direct = direct, block = block)
+    ) = RoutingConfig(splitRouting = true, proxy = proxy, direct = direct, block = block)
 
     private fun build(
         proxy: List<String> = emptyList(),
