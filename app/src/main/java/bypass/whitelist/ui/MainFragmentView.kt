@@ -48,11 +48,15 @@ class MainFragmentView(private val root: View) {
     private val corsAccountTitle: TextView = root.findViewById(R.id.corsAccountTitle)
     private val corsAccountSub: TextView = root.findViewById(R.id.corsAccountSub)
     private val corsAccountChevron: ImageView = root.findViewById(R.id.corsAccountChevron)
+    private val updateBanner: View = root.findViewById(R.id.updateBanner)
+    private val updateBannerTitle: TextView = root.findViewById(R.id.updateBannerTitle)
+    private val updateBannerSub: TextView = root.findViewById(R.id.updateBannerSub)
 
     var onAddCallClicked: Callback? = null
     var onScanQrClicked: Callback? = null
     var onHeroPressed: Callback? = null
     var onCorsSignInClicked: Callback? = null
+    var onUpdateClicked: Callback? = null
     var onPingPressed: Callback? = null
     var onCallSelected: ParamCallback<CallConfig>? = null
     var onCallLongPressed: ParamCallback<CallConfig>? = null
@@ -100,6 +104,32 @@ class MainFragmentView(private val root: View) {
         pingButton.setOnClickListener { onPingPressed?.invoke() }
         corsSignInButton.clipToOutline = true
         corsSignInButton.setOnClickListener { onCorsSignInClicked?.invoke() }
+        updateBanner.clipToOutline = true
+        updateBanner.setOnClickListener { onUpdateClicked?.invoke() }
+    }
+
+    /**
+     * Says a newer release exists, or takes the notice away again.
+     *
+     * @param version null whenever there is nothing newer than the running
+     * build — including before the first check has ever got an answer, which
+     * on these networks can be a long while. Nothing is shown in that case:
+     * "up to date" would be a claim the app has no grounds for.
+     * @param size how big the download is, or null when the release did not say
+     */
+    fun bindUpdate(version: String?, size: String?) {
+        if (version == null) {
+            updateBanner.visibility = View.GONE
+            return
+        }
+        val context = root.context
+        updateBannerTitle.text = context.getString(R.string.update_row_title, version)
+        updateBannerSub.text = if (size != null) {
+            context.getString(R.string.update_row_sub_sized, size)
+        } else {
+            context.getString(R.string.update_row_sub)
+        }
+        updateBanner.visibility = View.VISIBLE
     }
 
     /**

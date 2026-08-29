@@ -343,7 +343,13 @@ class CorsClient(
          */
         private val socksAuthInstalled = AtomicBoolean(false)
 
-        private fun socksProxy(): Proxy {
+        /**
+         * Shared, not private: anything that has to reach the outside world
+         * after a tunnel is up needs this same route, and a second caller
+         * installing its own default Authenticator would silently replace this
+         * one and take the relay's credentials with it.
+         */
+        internal fun socksProxy(): Proxy {
             if (socksAuthInstalled.compareAndSet(false, true)) {
                 Authenticator.setDefault(object : Authenticator() {
                     override fun getPasswordAuthentication(): PasswordAuthentication? {

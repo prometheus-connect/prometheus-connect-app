@@ -203,6 +203,19 @@
     <string name="cors_status_network">Cannot reach the service</string>
     <string name="settings_row_version">Version</string>
     <string name="settings_row_version_copied">Version copied</string>
+
+    <!-- Sideload update notice. The APK is installed by hand, so nothing else
+         is ever going to tell the user that a newer one exists. -->
+    <string name="update_row_title">Update available %1$s</string>
+    <string name="update_row_sub_sized">%1$s \u00b7 downloads in your browser</string>
+    <string name="update_row_sub">Downloads in your browser</string>
+    <string name="update_sheet_title">Update %1$s</string>
+    <string name="update_sheet_subtitle_sized">%1$s \u00b7 %2$s</string>
+    <string name="update_sheet_notes_none">This release came without notes</string>
+    <string name="update_sheet_hint">Opens your browser \u00b7 install the file yourself once it has downloaded</string>
+    <string name="update_sheet_download">Download APK</string>
+    <string name="update_sheet_page">Release page</string>
+    <string name="update_no_browser">No browser to open the link</string>
     <string name="settings_row_split_routing">Split routing</string>
     <string name="settings_row_split_routing_force">Split routing (force)</string>
     <string name="settings_row_split_routing_force_sub">Debug: run the router even when the session came from the standby pool. On a whitelist network this sends unmatched traffic nowhere.</string>

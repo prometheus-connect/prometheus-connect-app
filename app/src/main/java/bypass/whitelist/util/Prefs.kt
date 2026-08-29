@@ -8,6 +8,7 @@ import bypass.whitelist.routing.RoutingConfig
 import bypass.whitelist.tunnel.CallConfig
 import bypass.whitelist.tunnel.SplitTunnelingMode
 import bypass.whitelist.tunnel.TunnelMode
+import bypass.whitelist.update.AppUpdate
 
 object Prefs {
 
@@ -261,6 +262,46 @@ object Prefs {
             return try { ThemeMode.valueOf(name) } catch (_: IllegalArgumentException) { ThemeMode.SYSTEM }
         }
         set(value) = prefs.edit { putString(PrefsKeys.THEME_MODE, value.name) }
+
+    // ---- Sideload update notice -----------------------------------------------
+
+    /**
+     * What the last successful update check found, or null when it found
+     * nothing newer.
+     *
+     * Cached rather than asked for on every screen: GitHub is reachable only
+     * sometimes on these networks, so a notice that lived only in memory would
+     * vanish the moment the user left the screen it appeared on. Written as a
+     * whole — including as null — so the record can never be half of one
+     * release and half of another.
+     */
+    var cachedUpdate: AppUpdate?
+        get() {
+            val version = prefs.getString(PrefsKeys.UPDATE_VERSION, "") ?: ""
+            val downloadUrl = prefs.getString(PrefsKeys.UPDATE_DOWNLOAD_URL, "") ?: ""
+            if (version.isEmpty() || downloadUrl.isEmpty()) return null
+            return AppUpdate(
+                version = version,
+                notes = prefs.getString(PrefsKeys.UPDATE_NOTES, "") ?: "",
+                assetName = prefs.getString(PrefsKeys.UPDATE_ASSET_NAME, "") ?: "",
+                downloadUrl = downloadUrl,
+                sizeBytes = prefs.getLong(PrefsKeys.UPDATE_SIZE_BYTES, 0L),
+                pageUrl = prefs.getString(PrefsKeys.UPDATE_PAGE_URL, "") ?: "",
+            )
+        }
+        set(value) = prefs.edit {
+            putString(PrefsKeys.UPDATE_VERSION, value?.version ?: "")
+            putString(PrefsKeys.UPDATE_NOTES, value?.notes ?: "")
+            putString(PrefsKeys.UPDATE_ASSET_NAME, value?.assetName ?: "")
+            putString(PrefsKeys.UPDATE_DOWNLOAD_URL, value?.downloadUrl ?: "")
+            putString(PrefsKeys.UPDATE_PAGE_URL, value?.pageUrl ?: "")
+            putLong(PrefsKeys.UPDATE_SIZE_BYTES, value?.sizeBytes ?: 0L)
+        }
+
+    /** When the last check got an answer; 0 when none ever has. */
+    var updateCheckedAtMs: Long
+        get() = prefs.getLong(PrefsKeys.UPDATE_CHECKED_AT, 0L)
+        set(value) = prefs.edit { putLong(PrefsKeys.UPDATE_CHECKED_AT, value) }
 
     val activeDestination: CallConfig?
         get() {

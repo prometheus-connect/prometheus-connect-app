@@ -16,8 +16,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import bypass.whitelist.BuildConfig
+import bypass.whitelist.update.UpdateCheck
 import bypass.whitelist.util.Prefs
 import bypass.whitelist.util.ThemeMode
+import java.lang.ref.WeakReference
 
 class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
 
@@ -44,6 +46,18 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
     override fun onResume() {
         super.onResume()
         rebuild()
+        // One of the two moments the check can succeed: the user is here and
+        // reading, on whatever network they have. It never blocks the screen —
+        // the row appears if and when an answer arrives, and stays away when
+        // none does.
+        val host = activity ?: return
+        val weakSelf = WeakReference(this)
+        UpdateCheck.refresh {
+            host.runOnUiThread {
+                val self = weakSelf.get() ?: return@runOnUiThread
+                if (self.isAdded) self.rebuild()
+            }
+        }
     }
 
     fun refresh() {
@@ -218,6 +232,20 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
             clipboard.setPrimaryClip(ClipData.newPlainText("version", build))
             Toast.makeText(requireContext(), R.string.settings_row_version_copied,
                 Toast.LENGTH_SHORT).show()
+        }
+        // Directly under the version it supersedes, so the two read as one
+        // statement: this is what you are running, this is what there is. It
+        // exists only when there is something newer — an app that is current
+        // has nothing to say here, and says nothing.
+        UpdateCheck.pending?.let { update ->
+            val size = UpdateActionSheet.sizeLabel(requireContext(), update)
+            addRow(card, R.drawable.ic_arrow_down,
+                getString(R.string.update_row_title, update.version),
+                size?.let { getString(R.string.update_row_sub_sized, it) }
+                    ?: getString(R.string.update_row_sub),
+                null) {
+                UpdateActionSheet.show(parentFragmentManager, update)
+            }
         }
         return section
     }

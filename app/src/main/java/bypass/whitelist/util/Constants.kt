@@ -80,6 +80,15 @@ object PrefsKeys {
     const val ACTIVE_DESTINATION_ID = "active_destination_id"
     const val THEME_MODE = "theme_mode"
 
+    // Cached answer of the sideload update check
+    const val UPDATE_VERSION = "update_version"
+    const val UPDATE_NOTES = "update_notes"
+    const val UPDATE_ASSET_NAME = "update_asset_name"
+    const val UPDATE_DOWNLOAD_URL = "update_download_url"
+    const val UPDATE_PAGE_URL = "update_page_url"
+    const val UPDATE_SIZE_BYTES = "update_size_bytes"
+    const val UPDATE_CHECKED_AT = "update_checked_at"
+
     // Prometheus Connect service
     const val CORS_BASE_URL = "cors_base_url"
     const val CORS_TG_INIT_DATA = "cors_tg_init_data"

@@ -10,6 +10,7 @@ import bypass.whitelist.tunnel.CallConfig
 import bypass.whitelist.tunnel.CallPlatform
 import bypass.whitelist.tunnel.TunnelMode
 import bypass.whitelist.tunnel.VpnStatus
+import bypass.whitelist.update.UpdateCheck
 import bypass.whitelist.util.Prefs
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -69,6 +70,9 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         container.onCorsSignInClicked = {
             host()?.onCorsSignInPressed()
         }
+        container.onUpdateClicked = {
+            UpdateCheck.pending?.let { UpdateActionSheet.show(parentFragmentManager, it) }
+        }
         container.onScanQrClicked = {
             scanQrLauncher.launch(
                 ScanOptions()
@@ -111,6 +115,7 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         pendingStatus?.let { container.bindStatus(it) }
         pendingStatus = null
         renderCorsAccount()
+        renderUpdate()
     }
 
     override fun onResume() {
@@ -119,6 +124,7 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         content?.bindHero(connected = isHostConnected(), status = hostStatus())
         content?.resumeAnimations()
         renderCorsAccount()
+        renderUpdate()
         if (isHostConnected() || anonExpiresAtMs > 0L) {
             tickHandler.removeCallbacks(tickRunnable)
             tickHandler.postDelayed(tickRunnable, 1000L)
@@ -211,6 +217,15 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         renderCorsAccount()
     }
 
+    private fun renderUpdate() {
+        val view = content ?: return
+        val update = UpdateCheck.pending
+        view.bindUpdate(
+            version = update?.version,
+            size = update?.let { UpdateActionSheet.sizeLabel(requireContext(), it) },
+        )
+    }
+
     private fun renderCorsAccount() {
         val view = content ?: return
         if (corsSignedIn) {
@@ -239,6 +254,12 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     fun onConnectedChanged(connected: Boolean) {
         if (connected) {
             if (connectedSinceMs == 0L) connectedSinceMs = System.currentTimeMillis()
+            // The other moment worth asking GitHub: api.github.com is on no
+            // operator whitelist, so for a good share of these users a tunnel
+            // that just came up is the only network the question travels on.
+            // Every path that reports a live tunnel funnels through here.
+            val host = activity
+            if (host != null) UpdateCheck.refresh { host.runOnUiThread { renderUpdate() } }
         } else {
             connectedSinceMs = 0L
         }
