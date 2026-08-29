@@ -7,6 +7,7 @@ import android.service.quicksettings.TileService
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import bypass.whitelist.R
 
 @RequiresApi(Build.VERSION_CODES.N)
 class VpnTileService : TileService() {
@@ -36,7 +37,7 @@ class VpnTileService : TileService() {
             startSession()
             qsTile?.let {
                 it.state = Tile.STATE_ACTIVE
-                it.label = "Connecting..."
+                it.label = getString(R.string.vpn_connecting)
                 it.updateTile()
             }
         }
@@ -58,7 +59,7 @@ class VpnTileService : TileService() {
         ProxyService.requestStop(this)
         qsTile?.let {
             it.state = Tile.STATE_INACTIVE
-            it.label = "whitelistbypass"
+            it.label = getString(R.string.tile_label_idle)
             it.updateTile()
         }
     }
@@ -68,15 +69,15 @@ class VpnTileService : TileService() {
         when {
             TunnelServiceState.isTunnelActive(this) -> {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = "Bypass ON"
+                tile.label = getString(R.string.tile_label_active)
             }
             TunnelServiceState.isHeadlessSessionRunning(this) -> {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = "Connecting..."
+                tile.label = getString(R.string.vpn_connecting)
             }
             else -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "whitelistbypass"
+                tile.label = getString(R.string.tile_label_idle)
             }
         }
         tile.updateTile()

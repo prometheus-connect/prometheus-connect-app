@@ -43,7 +43,7 @@ class DnsActionSheet : BottomSheetDialogFragment() {
         DnsMode.entries.forEach { mode ->
             val row = inflater.inflate(R.layout.item_action_option, modeContainer, false)
             row.clipToOutline = true
-            row.findViewById<TextView>(R.id.actionOptionTitle).text = mode.label
+            row.findViewById<TextView>(R.id.actionOptionTitle).text = getString(mode.labelRes)
             row.findViewById<TextView>(R.id.actionOptionSub).visibility = View.GONE
             row.setOnClickListener {
                 selectedMode = mode

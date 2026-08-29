@@ -43,11 +43,18 @@
     <string name="notification_vpn_title">VPN active</string>
     <string name="notification_proxy_title">Proxy active</string>
     <string name="notification_session_connecting">Starting headless session</string>
+    <!-- Channel names. Android lists these in the system notification settings,
+         so they are read by the user and not only carried in the log. -->
+    <string name="notification_channel_vpn">VPN Tunnel</string>
+    <string name="notification_channel_proxy">Proxy Tunnel</string>
+    <string name="notification_channel_session">Headless Session</string>
     <string name="error_no_destination">Add and select a destination first</string>
     <string name="notification_disconnect">Disconnect</string>
     <string name="dc_mode_not_supported">DC mode not supported - falling back to video</string>
     <string name="tile_requires_headless_destination">Select a headless destination first</string>
     <string name="tile_vpn_permission_required">Open the app once and grant VPN permission</string>
+    <string name="tile_label_active">Bypass ON</string>
+    <string name="tile_label_idle">whitelistbypass</string>
 
     <string name="nav_main">Main</string>
     <string name="nav_settings">Settings</string>
@@ -72,6 +79,10 @@
     <string name="status_detail_pick_call">Pick a call and tap connect</string>
     <string name="status_headline_connecting">Connecting</string>
     <string name="status_headline_connected">Connected</string>
+    <string name="status_stopping_previous">Stopping previous session\u2026</string>
+    <string name="status_requesting_vpn_replacement">Requesting VPN replacement\u2026</string>
+    <string name="status_reset_stopped_waiting">Stopped waiting for previous session</string>
+    <string name="status_reset_still_stopping">Previous session is still shutting down. Try connect again.</string>
 
     <string name="stat_uptime">Uptime</string>
     <string name="stat_mode">Mode</string>
@@ -136,6 +147,7 @@
     <string name="split_tunneling_mode_only">Only</string>
     <string name="split_tunneling_mode_only_sub">Only selected apps go through the tunnel</string>
     <string name="split_tunneling_apps_section">Apps</string>
+    <string name="split_tunneling_app_icon">App icon</string>
     <string name="split_tunneling_summary_off">Off</string>
     <plurals name="split_tunneling_summary_count">
         <item quantity="one">%1$s, %2$d app</item>
@@ -148,6 +160,9 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_row_theme">Theme</string>
     <string name="settings_row_theme_sub">Light, dark, or follow system</string>
+    <string name="theme_mode_system">System</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
     <string name="settings_section_danger">Danger zone</string>
     <string name="settings_forget_all_destinations">Forget all calls</string>
     <string name="settings_forget_all_destinations_sub">Removes saved call links. Settings stay.</string>
@@ -164,6 +179,8 @@
     <string name="dns_sub">Pick a DNS resolver used inside the tunnel.</string>
     <string name="dns_primary_label">Primary</string>
     <string name="dns_secondary_label">Secondary</string>
+    <string name="dns_mode_system">System</string>
+    <string name="dns_mode_custom">Custom</string>
     <string name="proxy_sub">Local SOCKS5 endpoint exposed to apps routed through the tunnel.</string>
     <string name="proxy_port_field_label">SOCKS5 port</string>
     <string name="proxy_host_field_label">SOCKS5 host</string>
@@ -254,9 +271,11 @@
     <string name="cors_toast_no_telegram">Telegram app not found</string>
     <string name="cors_instance_name">Prometheus Connect</string>
 
-    <string name="fgs_justification_vpn">Manages VPN tunnel for network traffic bypass and routing.</string>
-    <string name="fgs_justification_proxy">Maintains a local SOCKS5 proxy server for traffic redirection.</string>
-    <string name="fgs_justification_headless">Manages a headless session state for persistent tunnel operation.</string>
+    <!-- Read from the manifest, which cannot vary by configuration, and addressed
+         to the store review rather than to anyone using the app. Not translated. -->
+    <string name="fgs_justification_vpn" translatable="false">Manages VPN tunnel for network traffic bypass and routing.</string>
+    <string name="fgs_justification_proxy" translatable="false">Maintains a local SOCKS5 proxy server for traffic redirection.</string>
+    <string name="fgs_justification_headless" translatable="false">Manages a headless session state for persistent tunnel operation.</string>
     <!-- Split routing screen -->
     <string name="routing_title">Split routing</string>
     <string name="routing_summary_off">Off \u00b7 everything through the tunnel</string>
@@ -321,4 +340,6 @@
     <string name="routing_import_nothing_dropped">Nothing was dropped.</string>
     <string name="routing_import_dropped_header">Dropped:</string>
     <string name="routing_import_dropped_line">\u2022 %1$s \u2014 %2$s</string>
+    <string name="routing_import_reason_route_order">route order is fixed: block, then direct, then proxy</string>
+    <string name="routing_import_reason_domain_strategy">domain strategy is fixed: the requested name is matched before its address</string>
 </resources>

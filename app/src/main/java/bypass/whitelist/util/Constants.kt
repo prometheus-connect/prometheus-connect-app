@@ -1,6 +1,8 @@
 package bypass.whitelist.util
 
+import androidx.annotation.StringRes
 import bypass.whitelist.BuildConfig
+import bypass.whitelist.R
 import java.security.SecureRandom
 
 object Net {
@@ -36,15 +38,15 @@ object SocksAuth {
         get() = if (Prefs.socksAuthMode == SocksAuthMode.MANUAL) Prefs.socksPass else autoPass
 }
 
-enum class DnsMode(val label: String) {
-    SYSTEM("System"),
-    CUSTOM("Custom"),
+enum class DnsMode(@StringRes val labelRes: Int) {
+    SYSTEM(R.string.dns_mode_system),
+    CUSTOM(R.string.dns_mode_custom),
 }
 
-enum class ThemeMode(val label: String) {
-    SYSTEM("System"),
-    LIGHT("Light"),
-    DARK("Dark"),
+enum class ThemeMode(@StringRes val labelRes: Int) {
+    SYSTEM(R.string.theme_mode_system),
+    LIGHT(R.string.theme_mode_light),
+    DARK(R.string.theme_mode_dark),
 }
 
 object PrefsKeys {

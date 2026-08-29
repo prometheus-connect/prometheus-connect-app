@@ -123,7 +123,8 @@ class ProxyService : Service() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "Proxy Tunnel", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, getString(R.string.notification_channel_proxy),
+                NotificationManager.IMPORTANCE_LOW
             )
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(channel)

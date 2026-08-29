@@ -1,5 +1,7 @@
 package bypass.whitelist.routing
 
+import androidx.annotation.StringRes
+import bypass.whitelist.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -19,8 +21,19 @@ object HappRouting {
 
     const val LINK_PREFIX = "happ://routing/add/"
 
+    /**
+     * Why an entry was refused. Carried as a resource for the same reason
+     * [RuleStatus] is: the sentence appears on the import sheet, where the user
+     * decides whether to apply the profile at all.
+     */
+    enum class DropReason(@StringRes val labelRes: Int) {
+        UNSUPPORTED(R.string.routing_status_unparseable),
+        ROUTE_ORDER(R.string.routing_import_reason_route_order),
+        DOMAIN_STRATEGY(R.string.routing_import_reason_domain_strategy),
+    }
+
     /** A line or a field that did not survive the import, and why. */
-    data class Dropped(val value: String, val reason: String)
+    data class Dropped(val value: String, val reason: DropReason)
 
     data class Import(
         val config: RoutingConfig,
@@ -59,7 +72,7 @@ object HappRouting {
             return RoutingConfig.parseList(merged.joinToString("\n")).filter { rule ->
                 val kind = RoutingConfig.kindOf(rule)
                 if (kind == RuleKind.UNSUPPORTED) {
-                    dropped += Dropped(rule, REASON_UNSUPPORTED)
+                    dropped += Dropped(rule, DropReason.UNSUPPORTED)
                     false
                 } else {
                     applied += rule
@@ -82,9 +95,9 @@ object HappRouting {
         // even when they agree with us — say so rather than let the user think
         // their ordering carried over.
         json.optString("RouteOrder").takeIf { it.isNotEmpty() }
-            ?.let { dropped += Dropped("RouteOrder: $it", REASON_ROUTE_ORDER) }
+            ?.let { dropped += Dropped("RouteOrder: $it", DropReason.ROUTE_ORDER) }
         json.optString("DomainStrategy").takeIf { it.isNotEmpty() }
-            ?.let { dropped += Dropped("DomainStrategy: $it", REASON_DOMAIN_STRATEGY) }
+            ?.let { dropped += Dropped("DomainStrategy: $it", DropReason.DOMAIN_STRATEGY) }
 
         return Import(
             config = RoutingConfig(splitRouting = !globalProxy, proxy = proxy, direct = direct, block = block),
@@ -146,11 +159,4 @@ object HappRouting {
     }
 
     private val TRUE_WORDS = setOf("true", "1", "yes", "on")
-
-    private const val REASON_UNSUPPORTED =
-        "not a category, domain or CIDR"
-    private const val REASON_ROUTE_ORDER =
-        "route order is fixed: block, then direct, then proxy"
-    private const val REASON_DOMAIN_STRATEGY =
-        "domain strategy is fixed: the requested name is matched before its address"
 }

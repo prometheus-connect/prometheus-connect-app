@@ -390,7 +390,8 @@ class TunnelVpnService : VpnService() {
     private fun startForegroundNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "VPN Tunnel", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, getString(R.string.notification_channel_vpn),
+                NotificationManager.IMPORTANCE_LOW
             )
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(channel)

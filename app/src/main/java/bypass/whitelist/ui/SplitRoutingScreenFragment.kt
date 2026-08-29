@@ -286,7 +286,8 @@ class SplitRoutingScreenFragment : Fragment() {
         } else {
             resources.getQuantityString(
                 R.plurals.split_tunneling_summary_count,
-                Prefs.splitTunnelingPackages.size, mode.label, Prefs.splitTunnelingPackages.size,
+                Prefs.splitTunnelingPackages.size, getString(mode.labelRes),
+                Prefs.splitTunnelingPackages.size,
             )
         }
         SettingsRows.addRow(
@@ -347,7 +348,9 @@ class SplitRoutingScreenFragment : Fragment() {
             } else {
                 append("\n\n").append(getString(R.string.routing_import_dropped_header))
                 result.dropped.forEach {
-                    append('\n').append(getString(R.string.routing_import_dropped_line, it.value, it.reason))
+                    append('\n').append(
+                        getString(R.string.routing_import_dropped_line, it.value, getString(it.reason.labelRes))
+                    )
                 }
             }
         }

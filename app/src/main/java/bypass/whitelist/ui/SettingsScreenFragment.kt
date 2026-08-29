@@ -110,12 +110,12 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
     private fun buildAppearanceSection(): View {
         val section = newSection(R.string.settings_section_appearance)
         val card = section.findViewById<LinearLayout>(R.id.sectionCard)
-        addRow(card, R.drawable.ic_setting_theme, getString(R.string.settings_row_theme), getString(R.string.settings_row_theme_sub), Prefs.themeMode.label) {
+        addRow(card, R.drawable.ic_setting_theme, getString(R.string.settings_row_theme), getString(R.string.settings_row_theme_sub), getString(Prefs.themeMode.labelRes)) {
             ChoiceActionSheet.show(
                 manager = parentFragmentManager,
                 title = getString(R.string.settings_row_theme),
                 subtitle = getString(R.string.settings_row_theme_sub),
-                options = ThemeMode.entries.map { ChoiceActionSheet.Option(it.name, it.label) },
+                options = ThemeMode.entries.map { ChoiceActionSheet.Option(it.name, getString(it.labelRes)) },
                 selectedId = Prefs.themeMode.name,
             ) { picked ->
                 val mode = ThemeMode.valueOf(picked.id)
@@ -192,7 +192,7 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
             ProxyActionSheet.show(parentFragmentManager) { rebuild() }
         }
 
-        addRow(card, R.drawable.ic_setting_dns, getString(R.string.settings_row_dns), Prefs.dnsMode.label, null) {
+        addRow(card, R.drawable.ic_setting_dns, getString(R.string.settings_row_dns), getString(Prefs.dnsMode.labelRes), null) {
             DnsActionSheet.show(parentFragmentManager) { rebuild() }
         }
 

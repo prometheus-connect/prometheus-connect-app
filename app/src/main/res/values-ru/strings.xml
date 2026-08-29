@@ -1,0 +1,346 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">Prometheus Connect</string>
+    <string name="share_logs">Отправить логи</string>
+    <string name="copy_logs_toast">Логи скопированы в буфер обмена</string>
+    <string name="autofill_settings_title">Настройки автозаполнения</string>
+    <string name="autofill_name_input_hint">Имя для автозаполнения</string>
+    <string name="autofill_generate_random">Случайное</string>
+    <string name="split_tunneling_show_system_apps">Показывать системные приложения</string>
+    <string name="split_tunneling_mode_changed">Переподключитесь, чтобы изменения вступили в силу</string>
+    <string name="split_tunneling_search_apps_hint">Поиск</string>
+    <string name="expand_webview">Развернуть WebView</string>
+    <string name="collapse_webview">Свернуть WebView</string>
+    <string name="vpn_starting">Запуск\u2026</string>
+    <string name="vpn_stopping">Остановка\u2026</string>
+    <string name="vpn_connecting">Подключение\u2026</string>
+    <string name="vpn_call_connected">Звонок подключён</string>
+    <string name="vpn_datachannel_open">DataChannel открыт</string>
+    <string name="vpn_datachannel_lost">DataChannel потерян</string>
+    <string name="vpn_tunnel_active">Туннель активен</string>
+    <string name="vpn_tunnel_lost">Туннель потерян, переподключение\u2026</string>
+    <string name="vpn_call_disconnected">Звонок отключён</string>
+    <string name="vpn_call_failed">Звонок не удался</string>
+    <string name="vpn_port_busy" tools:ignore="PluralsCandidate">Порт %1$d занят</string>
+    <string name="vpn_foreign_active">Активен другой VPN. Сначала выключите его.</string>
+    <string name="action_required_captcha">Нужно действие (капча)</string>
+    <string name="captcha_pill_label">Нужна капча / id.vk.com</string>
+    <string name="jshook_pill_label">Интерактивная страница</string>
+    <string name="proxy_settings_title">Прокси</string>
+    <string name="proxy_auth_auto">Авто</string>
+    <string name="proxy_auth_manual">Вручную</string>
+    <string name="proxy_username_hint">Имя пользователя</string>
+    <string name="proxy_password_hint">Пароль</string>
+    <string name="dns_settings_title">DNS</string>
+    <string name="dns_primary_hint">Основной DNS</string>
+    <string name="dns_secondary_hint">Запасной DNS</string>
+    <string name="vp8_settings_title">Настройки VP8</string>
+    <string name="vp8_fps_label">FPS</string>
+    <string name="vp8_batch_label">Пакет</string>
+    <string name="vp8_dual_track_title">Два потока</string>
+    <string name="vp8_dual_track_sub">Публиковать второй поток VP8 как демонстрацию экрана и делить исходящий трафик между обоими.</string>
+    <string name="vp8_reliable_title">Надёжный режим (KCP)</string>
+    <string name="vp8_reliable_sub">Обернуть видеотуннель в KCP. Выключено — чистый VP8: быстрее, но с потерями.</string>
+    <string name="notification_vpn_title">VPN активен</string>
+    <string name="notification_proxy_title">Прокси активен</string>
+    <string name="notification_session_connecting">Запуск фонового сеанса</string>
+    <!-- Channel names. Android lists these in the system notification settings,
+         so they are read by the user and not only carried in the log. -->
+    <string name="notification_channel_vpn">VPN-туннель</string>
+    <string name="notification_channel_proxy">Прокси-туннель</string>
+    <string name="notification_channel_session">Фоновый сеанс</string>
+    <string name="error_no_destination">Сначала добавьте и выберите звонок</string>
+    <string name="notification_disconnect">Отключить</string>
+    <string name="dc_mode_not_supported">Режим DC не поддерживается — используется Video</string>
+    <string name="tile_requires_headless_destination">Сначала выберите звонок для фонового режима</string>
+    <string name="tile_vpn_permission_required">Откройте приложение один раз и разрешите VPN</string>
+    <string name="tile_label_active">Обход включён</string>
+    <string name="tile_label_idle">whitelistbypass</string>
+
+    <string name="nav_main">Главная</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="nav_activity">Логи</string>
+
+    <string name="main_sub_no_configs">Нет сохранённых звонков</string>
+    <plurals name="main_sub_count">
+        <item quantity="one">%d звонок сохранён</item>
+        <item quantity="few">%d звонка сохранено</item>
+        <item quantity="many">%d звонков сохранено</item>
+        <item quantity="other">%d звонков сохранено</item>
+    </plurals>
+    <string name="main_sub_live">Активно</string>
+
+    <string name="empty_calls_title">Добавьте первый звонок</string>
+    <string name="empty_calls_sub">Вставьте ссылку на звонок, чтобы сохранить</string>
+
+    <string name="hero_connect">Подключить</string>
+    <string name="hero_cancel">Отмена</string>
+    <string name="hero_disconnect">Отключить</string>
+
+    <string name="status_headline_disconnected">Отключено</string>
+    <string name="status_detail_no_calls">Нажмите «Подключить», чтобы начать</string>
+    <string name="status_detail_pick_call">Выберите звонок и нажмите «Подключить»</string>
+    <string name="status_headline_connecting">Подключение</string>
+    <string name="status_headline_connected">Подключено</string>
+    <string name="status_stopping_previous">Остановка прошлого сеанса\u2026</string>
+    <string name="status_requesting_vpn_replacement">Запрос на замену VPN\u2026</string>
+    <string name="status_reset_stopped_waiting">Ожидание прошлого сеанса прервано</string>
+    <string name="status_reset_still_stopping">Прошлый сеанс ещё завершается. Попробуйте подключиться ещё раз.</string>
+
+    <string name="stat_uptime">Время работы</string>
+    <string name="stat_mode">Режим</string>
+
+    <string name="ping_run">Пинг через туннель</string>
+    <string name="ping_running">Пинг\u2026</string>
+    <string name="ping_ok">%1$s доступен через туннель</string>
+    <string name="ping_fail">%1$s недоступен через туннель</string>
+    <string name="ping_timeout">таймаут</string>
+    <string name="ping_ms">%1$d мс</string>
+
+    <string name="picker_add_title">Добавить звонок</string>
+
+    <string name="sheet_new_title">Новый звонок</string>
+    <string name="sheet_new_sub">Сохраните ссылку на звонок в список. Платформа определится сама.</string>
+    <string name="sheet_field_name">Название</string>
+    <string name="sheet_field_link">Ссылка на звонок</string>
+    <string name="sheet_field_name_hint">например, Стендап VK</string>
+    <string name="sheet_field_link_hint">https://\u2026</string>
+    <string name="sheet_save">Сохранить звонок</string>
+    <string name="sheet_save_short">Сохранить</string>
+    <string name="sheet_cancel">Отмена</string>
+    <string name="sheet_close">Закрыть</string>
+
+    <string name="paste_from_clipboard">Вставить из буфера обмена</string>
+    <string name="clipboard_empty">Буфер обмена пуст</string>
+    <string name="scan_qr_title">Сканировать QR-код</string>
+    <string name="scan_qr_prompt">Наведите камеру на QR-код в приложении организатора</string>
+
+
+    <string name="settings_row_tunnel_mode">Режим туннеля</string>
+    <string name="settings_row_vp8">Настройки VP8</string>
+    <string name="settings_row_vp8_sub" tools:ignore="PluralsCandidate">%1$d fps / пакет %2$d</string>
+    <string name="settings_row_vp8_flag_dual">2 потока</string>
+    <string name="settings_row_vp8_flag_kcp">kcp</string>
+    <string name="settings_row_autofill">Автозаполнение</string>
+    <string name="settings_row_autofill_off">Выключено</string>
+    <string name="settings_row_proxy">Прокси</string>
+    <string name="settings_row_proxy_sub">Порт SOCKS5 %1$d</string>
+    <string name="settings_row_dns">DNS</string>
+    <string name="settings_row_headless">Фоновый режим</string>
+    <string name="settings_row_headless_sub">Подключаться без видимого браузера</string>
+    <string name="settings_row_reconnect">Переподключаться при запуске</string>
+    <string name="settings_row_reconnect_sub">Восстанавливать прошлый сеанс автоматически</string>
+    <string name="settings_row_debug">Отладочные логи</string>
+    <string name="settings_row_debug_sub">Подробные логи релея для диагностики</string>
+
+    <string name="settings_toast_destinations_cleared">Все звонки удалены</string>
+    <string name="settings_toast_reset_done">Настройки сброшены</string>
+
+    <string name="destination_menu_rename">Переименовать</string>
+    <string name="destination_menu_delete">Удалить</string>
+    <string name="destination_rename_title">Переименовать звонок</string>
+    <string name="destination_delete_title">Удалить звонок</string>
+    <string name="destination_delete_confirm">Удалить «%1$s»?</string>
+
+    <string name="back">Назад</string>
+    <string name="split_tunneling_title">Маршрутизация по приложениям</string>
+    <string name="split_tunneling_mode_off">Выключено</string>
+    <string name="split_tunneling_mode_bypass">В обход</string>
+    <string name="split_tunneling_mode_bypass_sub">Выбранные приложения идут мимо туннеля</string>
+    <string name="split_tunneling_mode_only">Только выбранные</string>
+    <string name="split_tunneling_mode_only_sub">Через туннель идут только выбранные приложения</string>
+    <string name="split_tunneling_apps_section">Приложения</string>
+    <string name="split_tunneling_app_icon">Значок приложения</string>
+    <string name="split_tunneling_summary_off">Выключено</string>
+    <plurals name="split_tunneling_summary_count">
+        <item quantity="one">%1$s, %2$d приложение</item>
+        <item quantity="few">%1$s, %2$d приложения</item>
+        <item quantity="many">%1$s, %2$d приложений</item>
+        <item quantity="other">%1$s, %2$d приложений</item>
+    </plurals>
+
+    <string name="settings_section_tunnel">Туннель</string>
+    <string name="settings_section_network">Сеть</string>
+    <string name="settings_section_behavior">Поведение</string>
+    <string name="settings_section_appearance">Внешний вид</string>
+    <string name="settings_row_theme">Тема</string>
+    <string name="settings_row_theme_sub">Светлая, тёмная или как в системе</string>
+    <string name="theme_mode_system">Как в системе</string>
+    <string name="theme_mode_light">Светлая</string>
+    <string name="theme_mode_dark">Тёмная</string>
+    <string name="settings_section_danger">Опасная зона</string>
+    <string name="settings_forget_all_destinations">Забыть все звонки</string>
+    <string name="settings_forget_all_destinations_sub">Удаляет сохранённые ссылки. Настройки останутся.</string>
+    <string name="settings_reset_all">Сбросить все настройки</string>
+    <string name="settings_reset_all_sub">Вернуть все параметры к значениям по умолчанию</string>
+    <string name="confirm_reset">Сбросить</string>
+    <string name="confirm_forget">Забыть</string>
+    <string name="confirm_delete">Удалить</string>
+    <string name="autofill_settings_sub">Когда страница подключения спрашивает имя, приложение подставит его само.</string>
+    <string name="autofill_enable_title">Включить автозаполнение</string>
+    <string name="autofill_enable_sub">Нажимать кнопку входа и подставлять имя автоматически</string>
+    <string name="autofill_name_field_label">Отображаемое имя</string>
+    <string name="vp8_settings_sub">Настройка кадрирования видео в data-канале. Меньше fps и больше пакет — меньше накладных расходов, но возможны рывки.</string>
+    <string name="dns_sub">Выберите DNS-резолвер, который используется внутри туннеля.</string>
+    <string name="dns_primary_label">Основной</string>
+    <string name="dns_secondary_label">Запасной</string>
+    <string name="dns_mode_system">Системный</string>
+    <string name="dns_mode_custom">Свой</string>
+    <string name="proxy_sub">Локальная точка SOCKS5 для приложений, которые идут через туннель.</string>
+    <string name="proxy_port_field_label">Порт SOCKS5</string>
+    <string name="proxy_host_field_label">Хост SOCKS5</string>
+    <string name="proxy_host_hint">127.0.0.1</string>
+    <string name="proxy_auth_field_label">Аутентификация</string>
+    <string name="proxy_user_field_label">Логин</string>
+    <string name="proxy_pass_field_label">Пароль</string>
+    <string name="proxy_only_title">Только прокси</string>
+    <string name="proxy_only_sub">Без VPN, только SOCKS5</string>
+    <string name="proxy_auth_auto_sub">Сгенерированные логин и пароль</string>
+    <string name="proxy_auth_manual_sub">Использовать логин и пароль ниже</string>
+
+    <string name="activity_empty">Пока нет событий</string>
+    <string name="activity_copy">Копировать как есть</string>
+    <string name="activity_share">Отправить файл</string>
+
+    <!-- Prometheus Connect service integration -->
+    <string name="cors_connect_button">Подключиться к своему серверу</string>
+    <!-- The primary action reads differently depending on the account: without
+         a sign-in it hands out a free 5-minute tunnel, which "Connect to my
+         instance" misdescribes. -->
+    <string name="cors_connect_button_anon">Быстрое подключение</string>
+    <string name="cors_connect_sub_anon">Бесплатный туннель \u00b7 5 минут, без входа</string>
+    <string name="cors_connect_sub_signed_in">Без ограничений \u00b7 по вашей подписке</string>
+    <string name="cors_connect_sub">Создать туннель и подключиться</string>
+    <string name="cors_status_unavailable">Сервис недоступен</string>
+    <string name="cors_status_telegram_off">Вход через Telegram не настроен на сервере</string>
+    <string name="cors_status_creating">Создание сервера\u2026</string>
+    <string name="cors_status_starting">Запуск сервера\u2026</string>
+    <string name="cors_status_ready">Сервер готов</string>
+    <string name="cors_status_claiming">Авторизация\u2026</string>
+    <string name="cors_status_auth_required">Завершите вход через Telegram, чтобы авторизоваться</string>
+    <string name="cors_status_claimed">Авторизованы как %1$s</string>
+    <string name="cors_status_failed">Сбой сервера: %1$s</string>
+    <string name="cors_status_limited_5min">Сеанс ограничен 5 минутами (нет прав на продление)</string>
+    <string name="cors_status_cap">Сервер занят, попробуйте немного позже</string>
+    <string name="cors_status_network">Не удаётся связаться с сервисом</string>
+    <string name="settings_row_version">Версия</string>
+    <string name="settings_row_version_copied">Версия скопирована</string>
+
+    <!-- Sideload update notice. The APK is installed by hand, so nothing else
+         is ever going to tell the user that a newer one exists. -->
+    <string name="update_row_title">Доступно обновление %1$s</string>
+    <string name="update_row_sub_sized">%1$s \u00b7 скачается в браузере</string>
+    <string name="update_row_sub">Скачается в браузере</string>
+    <string name="update_sheet_title">Обновление %1$s</string>
+    <string name="update_sheet_subtitle_sized">%1$s \u00b7 %2$s</string>
+    <string name="update_sheet_notes_none">У этого выпуска нет описания</string>
+    <string name="update_sheet_hint">Откроется браузер \u00b7 установите файл сами, когда он скачается</string>
+    <string name="update_sheet_download">Скачать APK</string>
+    <string name="update_sheet_page">Страница выпуска</string>
+    <string name="update_no_browser">Нет браузера, чтобы открыть ссылку</string>
+    <string name="settings_row_split_routing">Раздельная маршрутизация</string>
+    <string name="settings_row_split_routing_force">Раздельная маршрутизация (принудительно)</string>
+    <string name="settings_row_split_routing_force_sub">Отладка: запускать маршрутизатор, даже если сеанс взят из резервного пула. В сети с белым списком трафик без правила уйдёт в никуда.</string>
+    <string name="cors_status_pool">Сервис недоступен — используется резервный звонок</string>
+    <string name="cors_status_disabled">API приложения отключён на сервере</string>
+    <string name="cors_status_token_missing">Токен приложения не настроен</string>
+    <string name="cors_signin_with_telegram">Войти через Telegram</string>
+    <string name="cors_signin_sub">Откроет бота в Telegram, чтобы авторизовать это устройство</string>
+    <string name="cors_account">Аккаунт</string>
+
+    <!-- Persistent account card on the Main screen. It is always visible: the
+         previous behaviour only hid the sign-in button once authorized, which
+         made "signed in" and "not asked yet" look identical. -->
+    <string name="cors_acct_anon_title">Вход не выполнен</string>
+    <string name="cors_acct_anon_sub_idle">Подключение выполнит вход \u00b7 без входа — 5 минут</string>
+    <string name="cors_acct_anon_sub_live">Бесплатный сеанс \u00b7 закончится через %1$s</string>
+    <string name="cors_acct_anon_sub_expired">Бесплатный 5-минутный сеанс закончился</string>
+    <string name="cors_acct_in_title">Вы вошли как %1$s</string>
+    <string name="cors_acct_in_sub">Подписка активна \u00b7 сеанс без ограничения по времени</string>
+    <string name="cors_acct_checking">Проверка подписки\u2026</string>
+    <string name="cors_login_opening">Открытие Telegram\u2026</string>
+    <string name="cors_login_waiting">Ожидание входа через Telegram\u2026</string>
+    <string name="cors_login_timeout">Время входа истекло \u2014 нажмите, чтобы повторить</string>
+    <string name="cors_login_failed">Не удалось войти: %1$s</string>
+    <string name="cors_login_no_subscription">Вы вошли как %1$s, но активной подписки нет</string>
+    <string name="cors_acct_no_subscription">Активной подписки нет \u00b7 сеансы остаются по 5 минут</string>
+    <string name="cors_account_signed_out">Вход не выполнен</string>
+    <string name="cors_forget_instance">Выйти</string>
+    <string name="cors_forget_instance_sub">Очистит сеанс, сохранённый сервер и вход через Telegram</string>
+    <string name="cors_base_url">Сервер</string>
+    <string name="cors_base_url_sub">Базовый URL API Prometheus Connect</string>
+    <string name="cors_base_url_label">URL сервера</string>
+    <string name="cors_section_service">Prometheus Connect</string>
+    <string name="cors_toast_instance_forgotten">Вы вышли</string>
+    <string name="cors_toast_signed_out">Вы вышли</string>
+    <string name="cors_toast_no_telegram">Приложение Telegram не найдено</string>
+    <string name="cors_instance_name">Prometheus Connect</string>
+
+    <!-- Split routing screen -->
+    <string name="routing_title">Раздельная маршрутизация</string>
+    <string name="routing_summary_off">Выключена \u00b7 всё идёт через туннель</string>
+    <plurals name="routing_summary_split">
+        <item quantity="one">По правилам \u00b7 %d правило</item>
+        <item quantity="few">По правилам \u00b7 %d правила</item>
+        <item quantity="many">По правилам \u00b7 %d правил</item>
+        <item quantity="other">По правилам \u00b7 %d правил</item>
+    </plurals>
+
+    <string name="routing_section_mode">Режим</string>
+    <string name="routing_split_switch">Раздельная маршрутизация</string>
+    <string name="routing_split_switch_sub">Выключено — всё идёт через туннель. Включено — трафик делится по правилам ниже.</string>
+
+    <string name="routing_section_rules">Правила</string>
+    <string name="routing_list_proxy">Прокси</string>
+    <string name="routing_list_direct">Напрямую</string>
+    <string name="routing_list_block">Блокировка</string>
+    <string name="routing_list_empty">Пусто</string>
+    <string name="routing_rules_sub">Одно правило в строке.</string>
+    <string name="routing_rules_checking">Проверяем, какие из них действуют\u2026</string>
+    <string name="routing_list_effect" tools:ignore="PluralsCandidate">действуют %1$d из %2$d</string>
+    <string name="routing_list_inert">не действует</string>
+    <string name="routing_lists_inert_off">Раздельная маршрутизация выключена, поэтому всё идёт через туннель и ни один из этих списков ничего не решает. Включите её выше, чтобы маршрутизировать по ним.</string>
+    <string name="routing_lists_inert_pool">Этот сеанс начался с резервного пула — так бывает только в сети с фильтрацией. Маршрутизатор там не запускается, поэтому ни один из этих списков ничего не решает.</string>
+    <string name="routing_lists_inert_blob">Файл правил ещё не загружен, поэтому маршрутизатор не запустится и ни один из этих списков ничего не решает. Подключитесь один раз с включённой раздельной маршрутизацией, чтобы его загрузить.</string>
+    <string name="routing_status_active">действует</string>
+    <string name="routing_status_unparseable">не категория, не домен и не CIDR</string>
+    <string name="routing_status_unknown">в каталоге нет категории с таким именем</string>
+    <string name="routing_status_unavailable">слишком большая, чтобы её включить, поэтому её нет в каталоге</string>
+    <string name="routing_status_missing">ещё не загружена</string>
+    <string name="routing_rules_hint">geosite:category\ngeoip:category\nexample.com\n10.0.0.0/8</string>
+    <string name="routing_row_import">Импорт из Happ</string>
+    <string name="routing_row_import_sub">Вставьте ссылку happ://routing/add/\u2026</string>
+
+    <string name="routing_section_profile">Профиль</string>
+    <string name="routing_profile_name">Профиль</string>
+    <string name="routing_profile_revision">Ревизия</string>
+    <string name="routing_profile_rules">Загружено правил</string>
+    <string name="routing_profile_cache">Кэш правил</string>
+    <string name="routing_profile_none">нет</string>
+    <string name="routing_profile_counting">\u2026</string>
+    <string name="routing_row_categories">Списки категорий</string>
+    <string name="routing_row_categories_none">Нет правил geosite: или geoip: для загрузки</string>
+    <string name="routing_row_categories_state" tools:ignore="PluralsCandidate">загружено %1$d из %2$d \u00b7 нажмите, чтобы догрузить остальные</string>
+    <string name="routing_categories_updating">Загрузка списков категорий\u2026</string>
+    <string name="routing_categories_result" tools:ignore="PluralsCandidate">действуют %1$d из %2$d категорий</string>
+
+    <string name="routing_section_order">Порядок маршрутов</string>
+    <string name="routing_order_value">блокировка \u2192 напрямую \u2192 прокси</string>
+    <string name="routing_order_sub">Заблокированные имена отклоняются, прямые открываются мимо туннеля, всё остальное идёт через него.</string>
+
+    <string name="routing_section_apps">Приложения</string>
+    <string name="routing_row_per_app">Маршрутизация по приложениям</string>
+
+    <string name="routing_import_title">Импорт правил маршрутизации</string>
+    <string name="routing_import_sub">Вставьте ссылку Happ. Ничего не применится, пока вы не увидите, что в ней.</string>
+    <string name="routing_import_field">Ссылка</string>
+    <string name="routing_import_apply">Применить</string>
+    <string name="routing_import_failed">Не удалось прочитать ссылку: %1$s</string>
+    <string name="routing_import_counts">применено %1$d, отброшено %2$d</string>
+    <string name="routing_import_split_on">Раздельная маршрутизация: включена</string>
+    <string name="routing_import_split_off">Раздельная маршрутизация: выключена</string>
+    <string name="routing_import_nothing_dropped">Ничего не отброшено.</string>
+    <string name="routing_import_dropped_header">Отброшено:</string>
+    <string name="routing_import_dropped_line">\u2022 %1$s \u2014 %2$s</string>
+    <string name="routing_import_reason_route_order">порядок маршрутов фиксирован: блокировка, затем напрямую, затем прокси</string>
+    <string name="routing_import_reason_domain_strategy">стратегия доменов фиксирована: сначала сверяется запрошенное имя, потом его адрес</string>
+</resources>

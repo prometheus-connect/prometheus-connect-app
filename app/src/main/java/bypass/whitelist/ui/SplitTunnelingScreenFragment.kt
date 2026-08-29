@@ -113,7 +113,7 @@ class SplitTunnelingScreenFragment : Fragment() {
         summary.text = if (mode == SplitTunnelingMode.NONE) {
             getString(R.string.split_tunneling_summary_off)
         } else {
-            resources.getQuantityString(R.plurals.split_tunneling_summary_count, packages.size, mode.label, packages.size)
+            resources.getQuantityString(R.plurals.split_tunneling_summary_count, packages.size, getString(mode.labelRes), packages.size)
         }
     }
 

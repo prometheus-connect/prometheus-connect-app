@@ -58,7 +58,7 @@ class ConfirmActionSheet : BottomSheetDialogFragment() {
             title: String,
             subtitle: String,
             confirmLabel: String,
-            cancelLabel: String = "Cancel",
+            cancelLabel: String,
             destructive: Boolean = false,
             onConfirm: Callback,
         ) {

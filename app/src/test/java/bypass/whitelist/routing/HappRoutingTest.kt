@@ -79,7 +79,7 @@ class HappRoutingTest {
         assertTrue(dropped.any { it.startsWith("DomainStrategy:") })
         assertEquals(3, result.dropped.size)
         // Nothing is dropped without saying why — the report is the whole point.
-        assertTrue(result.dropped.all { it.reason.isNotBlank() })
+        assertTrue(result.dropped.all { it.reason.labelRes != 0 })
         // And nothing turns up in both columns.
         assertTrue(result.applied.none { rule -> dropped.contains(rule) })
     }
