@@ -26,6 +26,16 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
 
     private var content: MainFragmentView? = null
     private var pendingStatus: VpnStatus? = null
+
+    /**
+     * Set the moment the hero is pressed, cleared when the session really ends.
+     *
+     * The press is answered instantly in the UI, but the host may take 15-20 s
+     * to report a status on a filtered network. Without this flag the dial would
+     * say "Cancel" while a second press still started a *second* connection —
+     * a worse bug than the silent button it replaced.
+     */
+    private var connectRequested = false
     private var connectedSinceMs: Long = 0L
 
     // Account state shown by the persistent card. Seeded from Prefs so a
@@ -84,9 +94,17 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
             )
         }
         container.onHeroPressed = {
-            if (isHostConnected() || isHostConnecting()) {
+            if (isHostConnected() || isHostConnecting() || connectRequested) {
+                connectRequested = false
                 host()?.onDisconnectPressed()
             } else {
+                // Answer the tap immediately. Everything below is asynchronous
+                // and on a whitelist network the first API call can burn 15-20 s
+                // before any status arrives; until 2026-09-01 the dial sat on
+                // "Connect" for all of it, so a user could not tell a started
+                // connection from an ignored tap. Reported by a real user.
+                connectRequested = true
+                container.bindHero(connected = false, status = VpnStatus.CONNECTING)
                 // One button for the whole thing. With a saved call it joins
                 // that; otherwise it runs the Prometheus flow, which creates a
                 // tunnel and — if nobody is signed in — walks through the
@@ -112,7 +130,10 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         }
         container.onCallLongPressed = ::showRowMenu
 
-        pendingStatus?.let { container.bindStatus(it) }
+        pendingStatus?.let {
+            container.bindStatus(it)
+            container.bindHero(connected = isHostConnected(), status = it)
+        }
         pendingStatus = null
         renderCorsAccount()
         renderUpdate()
@@ -148,6 +169,20 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         val container = content
         if (container != null) {
             container.bindStatus(status)
+            // The dial itself is drawn by bindHero, which used to run only when
+            // the connected flag flipped or the screen resumed. So tapping
+            // Connect updated the small line under the dial and nothing else —
+            // and on a filtered network nothing else happens for 15-20 s while
+            // the API call times out, so the button read as dead. A user
+            // reported exactly that on 2026-09-01. The CONNECTING visual
+            // already existed here in full; it simply was never triggered.
+            if (status != VpnStatus.CONNECTING && status != VpnStatus.STARTING) {
+                connectRequested = false
+            }
+            container.bindHero(
+                connected = isHostConnected(),
+                status = if (connectRequested && !isHostConnected()) VpnStatus.CONNECTING else status,
+            )
         } else {
             pendingStatus = status
         }
@@ -252,6 +287,7 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     }
 
     fun onConnectedChanged(connected: Boolean) {
+        connectRequested = false
         if (connected) {
             if (connectedSinceMs == 0L) connectedSinceMs = System.currentTimeMillis()
             // The other moment worth asking GitHub: api.github.com is on no
