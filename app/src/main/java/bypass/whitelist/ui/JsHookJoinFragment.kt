@@ -181,7 +181,7 @@ class JsHookJoinFragment : Fragment(), JoinSessionShutdown {
                     if (Prefs.autofillEnabled) {
                         host?.appendLog("Injecting autofill for ${maskUrl(url)}")
                         view.evaluateJavascript("window.autofillName='${Prefs.autofillName}'", null)
-                        view.evaluateJavascript(autofillers[platform]!!.value, null)
+                        autofillers[platform]?.let { view.evaluateJavascript(it.value, null) }
                     }
                 }
             }
@@ -230,8 +230,12 @@ class JsHookJoinFragment : Fragment(), JoinSessionShutdown {
         toggleLabel.setText(if (value) R.string.collapse_webview else R.string.expand_webview)
     }
 
+    // WBSTREAM and DION are routed headless and never reach this fragment, so the
+    // map has no entry for them. Fall back instead of `!!` — a missed platform
+    // should degrade to the VK hook, not crash the whole connect.
     private fun hookForPlatform(platform: CallPlatform): String =
-        hooks[HookKey(tunnelMode.isPion, platform)]!!.value
+        (hooks[HookKey(tunnelMode.isPion, platform)]
+            ?: hooks[HookKey(tunnelMode.isPion, CallPlatform.VK)]!!).value
 
     private fun stripCsp(url: String, request: WebResourceRequest): WebResourceResponse? {
         return try {

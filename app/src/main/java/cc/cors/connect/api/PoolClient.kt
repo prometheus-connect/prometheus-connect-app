@@ -34,6 +34,24 @@ class PoolClient(
     private val publicKey: String = BuildConfig.PC_POOL_PUBLIC_KEY,
 ) {
 
+    /**
+     * Settings the server publishes into the same folder, as
+     * `cfg--<key>--<base64url(value)>`. They ride here for the same reason the
+     * calls do: only the anonymous Disk *listing* is known to survive a
+     * whitelist channel, so anything the app must be able to re-learn has to fit
+     * in a filename. Unknown keys are ignored, so the server can add settings
+     * without waiting for an app release.
+     */
+    data class RemoteConfig(val values: Map<String, String>) {
+        val baseUrl: String? get() = values["baseUrl"]?.takeIf { it.startsWith("https://") }
+        val minVersionCode: Int get() = values["minVersionCode"]?.toIntOrNull() ?: 0
+        val message: String get() = values["message"].orEmpty()
+        val isEmpty: Boolean get() = values.isEmpty()
+    }
+
+    /** Everything one listing tells us: the calls and the settings. */
+    data class Snapshot(val entries: List<Entry>, val config: RemoteConfig)
+
     val isConfigured: Boolean
         get() = publicKey.isNotBlank() && !publicKey.startsWith("REPLACE_")
 
@@ -62,7 +80,13 @@ class PoolClient(
      * a genuine transport failure still throws [CorsException] so the caller can
      * tell "no pool" from "no network".
      */
-    fun fetch(): List<Entry> {
+    fun fetch(): List<Entry> = fetchAll().entries
+
+    /**
+     * One request, both halves. Kept separate from [fetch] so existing callers
+     * are untouched.
+     */
+    fun fetchAll(): Snapshot {
         val url = LISTING_BASE + "?public_key=" +
             URLEncoder.encode(publicKey, StandardCharsets.UTF_8.name()) +
             "&limit=" + LIMIT
@@ -70,12 +94,17 @@ class PoolClient(
         val items = JSONObject(body)
             .optJSONObject("_embedded")
             ?.optJSONArray("items")
-            ?: return emptyList()
+            ?: return Snapshot(emptyList(), RemoteConfig(emptyMap()))
 
         val now = System.currentTimeMillis() / 1000
         val out = ArrayList<Entry>(items.length())
+        val cfg = HashMap<String, String>()
         for (i in 0 until items.length()) {
             val name = items.optJSONObject(i)?.optString("name").orEmpty()
+            if (name.startsWith(CONFIG_PREFIX)) {
+                parseConfig(name)?.let { (k, v) -> cfg[k] = v }
+                continue
+            }
             val entry = parse(name) ?: continue
             // The published expiry is rounded down to a coarse bucket by the
             // server, so treat it as advisory and keep a margin: a call that is
@@ -84,7 +113,25 @@ class PoolClient(
             if (entry.expiresAt - now < MIN_REMAINING_SECONDS) continue
             out.add(entry)
         }
-        return out.sortedBy { it.seq }
+        return Snapshot(out.sortedBy { it.seq }, RemoteConfig(cfg))
+    }
+
+    /** `cfg--<key>--<base64url value>`; anything malformed is skipped silently. */
+    private fun parseConfig(name: String): Pair<String, String>? {
+        val parts = name.split("--", limit = 3)
+        if (parts.size != 3 || parts[1].isBlank()) return null
+        return try {
+            val decoded = String(
+                android.util.Base64.decode(
+                    parts[2],
+                    android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP,
+                ),
+                StandardCharsets.UTF_8,
+            )
+            parts[1] to decoded
+        } catch (_: IllegalArgumentException) {
+            null
+        }
     }
 
     /**
@@ -151,6 +198,7 @@ class PoolClient(
     }
 
     private companion object {
+        const val CONFIG_PREFIX = "cfg--"
         const val LISTING_BASE = "https://cloud-api.yandex.net/v1/disk/public/resources"
         const val LIMIT = 50
         const val CONNECT_TIMEOUT_MS = 10_000

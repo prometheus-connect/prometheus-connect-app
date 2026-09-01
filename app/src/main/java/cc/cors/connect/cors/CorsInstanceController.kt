@@ -12,6 +12,7 @@ import cc.cors.connect.api.CorsClient
 import cc.cors.connect.api.CorsException
 import cc.cors.connect.api.CreateInstanceOut
 import cc.cors.connect.api.InstanceState
+import bypass.whitelist.BuildConfig
 import cc.cors.connect.api.PoolClient
 
 /**
@@ -85,6 +86,19 @@ class CorsInstanceController(
 
     fun start() {
         stopped = false
+        // Learn the server's settings on every connect, not only when the pool
+        // rescue path runs. Applying them only on a broken network would mean a
+        // moved backend is announced exclusively to clients that can no longer
+        // reach anything — the opposite of useful. Fire-and-forget: the connect
+        // must never wait on it, and the values land for this or the next try.
+        bg {
+            try {
+                val pool = PoolClient()
+                if (pool.isConfigured) applyRemoteConfig(pool.fetchAll().config)
+            } catch (e: Exception) {
+                Log.d(TAG, "remote config unavailable: ${e.message}")
+            }
+        }
         bg {
             if (!client.isConfigured) {
                 failRes("cors_status_token_missing")
@@ -181,16 +195,42 @@ class CorsInstanceController(
      * The session is unclaimed here on purpose: the pool exists to get *a* tunnel
      * up, and the subscription check happens afterwards over clean internet.
      */
+    /**
+     * Adopts server-published settings. Deliberately conservative: only values
+     * that are present and well-formed replace what we have, so a truncated or
+     * partially-written folder can never brick a client.
+     */
+    private fun applyRemoteConfig(cfg: PoolClient.RemoteConfig) {
+        if (cfg.isEmpty) return
+        cfg.baseUrl?.let { url ->
+            val clean = url.trimEnd('/')
+            if (clean != Prefs.corsBaseUrl) {
+                Log.i(TAG, "remote config: backend -> $clean")
+                Prefs.corsBaseUrl = clean
+            }
+        }
+        if (cfg.minVersionCode > BuildConfig.VERSION_CODE) {
+            Log.w(TAG, "remote config: build ${BuildConfig.VERSION_CODE} is older than required ${cfg.minVersionCode}")
+        }
+        if (cfg.message.isNotBlank()) Log.i(TAG, "remote config message: ${cfg.message}")
+    }
+
     private fun connectViaPool(): Boolean {
         val pool = PoolClient()
         if (!pool.isConfigured) return false
         status("cors_status_pool")
-        val entry = try {
-            pool.fetch().firstOrNull()
+        val snapshot = try {
+            pool.fetchAll()
         } catch (e: Exception) {
             Log.w(TAG, "pool bootstrap failed: ${e.message}")
             null
-        } ?: return false
+        }
+        // The same listing carries the server's settings. Apply them before
+        // using the call: reaching the pool means the normal API was
+        // unreachable, so this is often the only chance to learn that something
+        // moved — and the whole point is not needing a new APK when it does.
+        snapshot?.config?.let { applyRemoteConfig(it) }
+        val entry = snapshot?.entries?.firstOrNull() ?: return false
 
         Log.i(TAG, "pool bootstrap: ${entry.platform} ${entry.mode} ${entry.url}")
         poolEntry = entry
