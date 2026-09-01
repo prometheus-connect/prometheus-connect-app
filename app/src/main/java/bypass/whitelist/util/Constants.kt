@@ -49,6 +49,22 @@ enum class ThemeMode(@StringRes val labelRes: Int) {
     DARK(R.string.theme_mode_dark),
 }
 
+/**
+ * The language the interface is drawn in.
+ *
+ * [tag] is the BCP-47 tag handed to AppCompat; SYSTEM carries an empty one,
+ * which is how AppCompat spells "no override, follow the system". The set is
+ * deliberately the same as res/xml/locales_config.xml — the system picker on
+ * Android 13+ reads that file and this list feeds the in-app picker, and a
+ * language offered in one place but not the other would be a bug the user
+ * sees rather than one the compiler catches.
+ */
+enum class LanguageMode(@StringRes val labelRes: Int, val tag: String) {
+    SYSTEM(R.string.language_mode_system, ""),
+    RUSSIAN(R.string.language_mode_ru, "ru"),
+    ENGLISH(R.string.language_mode_en, "en"),
+}
+
 object PrefsKeys {
     const val CONNECT_ON_START = "connect_on_start"
     const val TUNNEL_MODE = "tunnel_mode"

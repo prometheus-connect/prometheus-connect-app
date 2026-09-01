@@ -42,6 +42,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.WhitelistBypass"
         android:usesCleartextTraffic="true"
         android:extractNativeLibs="true">
@@ -134,6 +135,21 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+        <!--
+             AppCompat's per-app language storage. Android 13+ keeps the choice
+             itself; below that this holder is what persists it across restarts.
+             Disabled and unexported on purpose - it is a metadata carrier, not
+             something to run or call.
+        -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+
     </application>
 
 </manifest>

@@ -18,6 +18,7 @@ import android.widget.Toast
 import bypass.whitelist.BuildConfig
 import bypass.whitelist.update.UpdateCheck
 import bypass.whitelist.util.Prefs
+import bypass.whitelist.util.LanguageMode
 import bypass.whitelist.util.ThemeMode
 import java.lang.ref.WeakReference
 
@@ -123,6 +124,23 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
                     Prefs.themeMode = mode
                     App.applyTheme(mode)
                     rebuild()
+                }
+            }
+        }
+        addRow(card, R.drawable.ic_setting_language, getString(R.string.settings_row_language), getString(R.string.settings_row_language_sub), getString(App.currentLanguage().labelRes)) {
+            ChoiceActionSheet.show(
+                manager = parentFragmentManager,
+                title = getString(R.string.settings_row_language),
+                subtitle = getString(R.string.settings_row_language_sub),
+                options = LanguageMode.entries.map { ChoiceActionSheet.Option(it.name, getString(it.labelRes)) },
+                selectedId = App.currentLanguage().name,
+            ) { picked ->
+                val mode = LanguageMode.valueOf(picked.id)
+                if (mode != App.currentLanguage()) {
+                    // No rebuild() here: AppCompat recreates the activity to
+                    // redraw it in the new locale, so rebuilding the rows we
+                    // are standing on would race that.
+                    App.applyLanguage(mode)
                 }
             }
         }

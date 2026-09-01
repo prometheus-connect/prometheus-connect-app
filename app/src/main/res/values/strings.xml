@@ -163,6 +163,11 @@
     <string name="theme_mode_system">System</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
+    <string name="settings_row_language">Language</string>
+    <string name="settings_row_language_sub">Русский, English, or follow system</string>
+    <string name="language_mode_system">System</string>
+    <string name="language_mode_ru">Русский</string>
+    <string name="language_mode_en">English</string>
     <string name="settings_section_danger">Danger zone</string>
     <string name="settings_forget_all_destinations">Forget all calls</string>
     <string name="settings_forget_all_destinations_sub">Removes saved call links. Settings stay.</string>

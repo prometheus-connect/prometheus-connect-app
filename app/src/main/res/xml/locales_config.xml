@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The languages the app actually carries. Android 13+ reads this to put a
+  "Language" entry in the app's system settings; without it the app silently
+  follows the system locale and a Russian speaker on an English phone has no
+  way out. Add a locale here whenever a values-<lang> folder appears.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ru" />
+</locale-config>

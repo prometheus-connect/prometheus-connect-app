@@ -167,6 +167,11 @@
     <string name="theme_mode_system">Как в системе</string>
     <string name="theme_mode_light">Светлая</string>
     <string name="theme_mode_dark">Тёмная</string>
+    <string name="settings_row_language">Язык</string>
+    <string name="settings_row_language_sub">Русский, English или как в системе</string>
+    <string name="language_mode_system">Как в системе</string>
+    <string name="language_mode_ru">Русский</string>
+    <string name="language_mode_en">English</string>
     <string name="settings_section_danger">Опасная зона</string>
     <string name="settings_forget_all_destinations">Забыть все звонки</string>
     <string name="settings_forget_all_destinations_sub">Удаляет сохранённые ссылки. Настройки останутся.</string>
