@@ -167,7 +167,11 @@ class PoolClient(
             CallPlatform.WBSTREAM -> "wbstream://$payload"
             CallPlatform.DION -> "dion://$payload"
             CallPlatform.TELEMOST -> "https://telemost.yandex.ru/j/$payload"
-            CallPlatform.VK -> payload
+            // VK, like the others, rides as a compact payload — the join token
+            // alone (the last path segment of https://vk.ru/call/join/<token>),
+            // since a full URL cannot be a Disk file name. Reconstruct the link
+            // the joiner expects; the obfuscator keys off the token either way.
+            CallPlatform.VK -> "https://vk.ru/call/join/$payload"
         }
         // Ask for what the server advertised, but let the platform veto it —
         // DC does not exist on Telemost or DION and would be silently coerced
