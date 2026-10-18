@@ -238,6 +238,11 @@
     <string name="update_sheet_download">Download APK</string>
     <string name="update_sheet_page">Release page</string>
     <string name="update_no_browser">No browser to open the link</string>
+    <string name="settings_row_check_update">Check for updates</string>
+    <string name="settings_row_check_update_sub">Ask GitHub for the latest release</string>
+    <string name="update_check_checking">Checking for updates…</string>
+    <string name="update_check_up_to_date">You\'re on the latest version</string>
+    <string name="update_check_unreachable">Couldn\'t reach GitHub — connect first, then try again</string>
     <string name="settings_row_split_routing">Split routing</string>
     <string name="settings_row_split_routing_force">Split routing (force)</string>
     <string name="settings_row_split_routing_force_sub">Debug: run the router even when the session came from the standby pool. On a whitelist network this sends unmatched traffic nowhere.</string>

@@ -251,6 +251,45 @@ class SettingsScreenFragment : Fragment(R.layout.fragment_settings_screen) {
             Toast.makeText(requireContext(), R.string.settings_row_version_copied,
                 Toast.LENGTH_SHORT).show()
         }
+        // The automatic check runs only at connect and at most once every six
+        // hours, and says nothing when it finds nothing — so "is there an
+        // update?" had no answer the user could ask for. This forces a check
+        // past that interval and speaks the result: a newer build opens its
+        // sheet straight away, "nothing newer" and "could not reach GitHub"
+        // each say so, because on a whitelist tariff the latter is the ordinary
+        // case and a silent button reads as broken.
+        addRow(card, R.drawable.ic_setting_reconnect,
+            getString(R.string.settings_row_check_update),
+            getString(R.string.settings_row_check_update_sub), null) {
+            val ctx = requireContext().applicationContext
+            Toast.makeText(ctx, R.string.update_check_checking, Toast.LENGTH_SHORT).show()
+            val host = activity ?: return@addRow
+            val weakSelf = WeakReference(this)
+            UpdateCheck.check(force = true) { outcome ->
+                host.runOnUiThread {
+                    when (outcome) {
+                        UpdateCheck.Outcome.UPDATE_AVAILABLE -> {
+                            val self = weakSelf.get()
+                            if (self != null && self.isAdded) {
+                                self.rebuild()
+                                UpdateCheck.pending?.let {
+                                    UpdateActionSheet.show(self.parentFragmentManager, it)
+                                }
+                            }
+                        }
+                        UpdateCheck.Outcome.UP_TO_DATE ->
+                            Toast.makeText(ctx, R.string.update_check_up_to_date,
+                                Toast.LENGTH_SHORT).show()
+                        UpdateCheck.Outcome.UNREACHABLE ->
+                            Toast.makeText(ctx, R.string.update_check_unreachable,
+                                Toast.LENGTH_LONG).show()
+                        // Another check is already running; its own result will
+                        // speak. Saying "busy" here would be noise.
+                        UpdateCheck.Outcome.BUSY -> Unit
+                    }
+                }
+            }
+        }
         // Directly under the version it supersedes, so the two read as one
         // statement: this is what you are running, this is what there is. It
         // exists only when there is something newer — an app that is current

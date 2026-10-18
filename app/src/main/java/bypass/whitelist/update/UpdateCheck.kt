@@ -28,6 +28,17 @@ import kotlin.concurrent.thread
 object UpdateCheck {
 
     /**
+     * What a check settled on, for a caller that has to say something.
+     *
+     * The automatic callers want only "an answer arrived" and read [pending]
+     * themselves; a button the user pressed has to distinguish the three ways a
+     * check ends — there is a newer build, there is not, or GitHub could not be
+     * reached — because on these networks the last of those is the common one
+     * and silence would read as the button doing nothing.
+     */
+    enum class Outcome { UPDATE_AVAILABLE, UP_TO_DATE, UNREACHABLE, BUSY }
+
+    /**
      * The release the last successful check found, or null when there is none.
      *
      * Re-tested against the running build rather than trusted: once the user
@@ -45,12 +56,38 @@ object UpdateCheck {
      * — hop to the UI yourself. Not called when nothing was asked, and not
      * called when nothing answered.
      */
-    fun refresh(onAnswer: Callback? = null) {
-        val sinceLast = System.currentTimeMillis() - Prefs.updateCheckedAtMs
-        // A clock that moved backwards makes the age negative. Ask again rather
-        // than sit the check out until real time catches up.
-        if (sinceLast in 0 until MIN_INTERVAL_MS) return
-        if (!inFlight.compareAndSet(false, true)) return
+    fun refresh(onAnswer: Callback? = null) = check(force = false) { outcome ->
+        // The automatic callers only redraw a row that may have appeared. A
+        // check that answered — whether it found a release or cleared one —
+        // is the one that can change what [pending] returns; a check that was
+        // skipped for the interval or could not reach GitHub changed nothing,
+        // so there is nothing to redraw.
+        if (outcome == Outcome.UPDATE_AVAILABLE || outcome == Outcome.UP_TO_DATE) onAnswer?.invoke()
+    }
+
+    /**
+     * Asks GitHub, off the main thread, and reports how it went.
+     *
+     * @param force skips the [MIN_INTERVAL_MS] gate. The automatic callers
+     * leave it false so a check every connect does not hammer GitHub; a button
+     * the user pressed sets it true, because "I asked and nothing happened" is
+     * the whole complaint it exists to answer.
+     * @param onResult runs on the worker thread once the check has settled —
+     * hop to the UI yourself. Not called at all when [force] is false and the
+     * interval has not elapsed (nothing was asked). [Outcome.BUSY] means another
+     * check is already in flight and will store its own answer.
+     */
+    fun check(force: Boolean = false, onResult: ((Outcome) -> Unit)? = null) {
+        if (!force) {
+            val sinceLast = System.currentTimeMillis() - Prefs.updateCheckedAtMs
+            // A clock that moved backwards makes the age negative. Ask again
+            // rather than sit the check out until real time catches up.
+            if (sinceLast in 0 until MIN_INTERVAL_MS) return
+        }
+        if (!inFlight.compareAndSet(false, true)) {
+            onResult?.invoke(Outcome.BUSY)
+            return
+        }
         thread(name = "update-check", isDaemon = true) {
             try {
                 val answer = AppUpdate.parse(latestRelease(), BuildConfig.VERSION_NAME)
@@ -58,12 +95,14 @@ object UpdateCheck {
                 // "there is no update" is stored as deliberately as an update.
                 Prefs.cachedUpdate = answer
                 Prefs.updateCheckedAtMs = System.currentTimeMillis()
-                onAnswer?.invoke()
+                onResult?.invoke(if (answer != null) Outcome.UPDATE_AVAILABLE else Outcome.UP_TO_DATE)
             } catch (e: Exception) {
-                // Deliberately only a log line. The timestamp is left untouched
-                // so the next settings screen or tunnel tries again, instead of
-                // a single failure buying six hours of silence.
+                // The automatic path wants only a log line, and the timestamp is
+                // left untouched so the next settings screen or tunnel tries
+                // again instead of a single failure buying six hours of silence.
+                // A forced caller is also told, so its button can say so.
                 Log.i(TAG, "update check skipped: ${e.message}")
+                onResult?.invoke(Outcome.UNREACHABLE)
             } finally {
                 inFlight.set(false)
             }

@@ -242,6 +242,11 @@
     <string name="update_sheet_download">Скачать APK</string>
     <string name="update_sheet_page">Страница выпуска</string>
     <string name="update_no_browser">Нет браузера, чтобы открыть ссылку</string>
+    <string name="settings_row_check_update">Проверить обновления</string>
+    <string name="settings_row_check_update_sub">Спросить GitHub о последней версии</string>
+    <string name="update_check_checking">Проверяю обновления…</string>
+    <string name="update_check_up_to_date">У вас последняя версия</string>
+    <string name="update_check_unreachable">Не удалось связаться с GitHub — сначала подключитесь, затем повторите</string>
     <string name="settings_row_split_routing">Раздельная маршрутизация</string>
     <string name="settings_row_split_routing_force">Раздельная маршрутизация (принудительно)</string>
     <string name="settings_row_split_routing_force_sub">Отладка: запускать маршрутизатор, даже если сеанс взят из резервного пула. В сети с белым списком трафик без правила уйдёт в никуда.</string>
