@@ -180,7 +180,7 @@ class UpdateActionSheet : BottomSheetDialogFragment() {
 
     private fun installNow(file: File) {
         installWhenReady = false
-        if (UpdateDownload.install(requireContext(), file)) {
+        if (UpdateDownload.install(requireActivity(), file)) {
             dismissAllowingStateLoss()
         } else {
             installerMissing = true

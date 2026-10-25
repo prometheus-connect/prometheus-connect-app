@@ -1,5 +1,6 @@
 package bypass.whitelist.update
 
+import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -127,13 +128,19 @@ object UpdateDownload {
     }
 
     /**
-     * Opens Android's installer on [file]. False when nothing could take it,
-     * which on a phone means the package installer has been disabled.
+     * Opens Android's installer on [file], in [activity]'s task. False when
+     * nothing could take it, which on a phone means the package installer has
+     * been disabled.
+     *
+     * In the caller's task on purpose: with FLAG_ACTIVITY_NEW_TASK an
+     * installer task still open from an earlier install (its "App installed"
+     * screen never dismissed) is merely brought to the front, and this
+     * install never starts.
      */
-    fun install(context: Context, file: File): Boolean = try {
-        context.startActivity(installIntent(context, file))
+    fun install(activity: Activity, file: File): Boolean = try {
+        activity.startActivity(installIntent(activity, file))
         // A "tap to install" posted while nobody watched is answered now.
-        context.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
+        activity.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
         true
     } catch (e: ActivityNotFoundException) {
         Log.w(TAG, "no installer for the update: ${e.message}")
@@ -253,7 +260,9 @@ object UpdateDownload {
             if (offset > 0) setRequestProperty("Range", "bytes=$offset-")
         }
         try {
-            val append = when (val code = conn.responseCode) {
+            val code = conn.responseCode
+            Log.i(TAG, "update route ${route.label} from byte $offset: HTTP $code")
+            val append = when (code) {
                 HttpURLConnection.HTTP_PARTIAL -> {
                     // A server that answers a different range than asked would
                     // splice two places of the file together.
@@ -387,7 +396,7 @@ object UpdateDownload {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         return Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, APK_MIME)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
     // ---- the notification: for when nobody is watching ----
