@@ -303,6 +303,7 @@ object Prefs {
                 assetName = prefs.getString(PrefsKeys.UPDATE_ASSET_NAME, "") ?: "",
                 downloadUrl = downloadUrl,
                 sizeBytes = prefs.getLong(PrefsKeys.UPDATE_SIZE_BYTES, 0L),
+                sha256 = prefs.getString(PrefsKeys.UPDATE_SHA256, "") ?: "",
                 pageUrl = prefs.getString(PrefsKeys.UPDATE_PAGE_URL, "") ?: "",
             )
         }
@@ -313,6 +314,7 @@ object Prefs {
             putString(PrefsKeys.UPDATE_DOWNLOAD_URL, value?.downloadUrl ?: "")
             putString(PrefsKeys.UPDATE_PAGE_URL, value?.pageUrl ?: "")
             putLong(PrefsKeys.UPDATE_SIZE_BYTES, value?.sizeBytes ?: 0L)
+            putString(PrefsKeys.UPDATE_SHA256, value?.sha256 ?: "")
         }
 
     /** When the last check got an answer; 0 when none ever has. */

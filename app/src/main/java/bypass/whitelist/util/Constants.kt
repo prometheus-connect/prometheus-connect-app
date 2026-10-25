@@ -105,6 +105,7 @@ object PrefsKeys {
     const val UPDATE_DOWNLOAD_URL = "update_download_url"
     const val UPDATE_PAGE_URL = "update_page_url"
     const val UPDATE_SIZE_BYTES = "update_size_bytes"
+    const val UPDATE_SHA256 = "update_sha256"
     const val UPDATE_CHECKED_AT = "update_checked_at"
 
     // Prometheus Connect service

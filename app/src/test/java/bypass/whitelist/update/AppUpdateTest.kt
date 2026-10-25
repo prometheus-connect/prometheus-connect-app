@@ -159,4 +159,30 @@ class AppUpdateTest {
           ]
         }
     """.trimIndent()
+
+    @Test
+    fun `the digest is read as GitHub writes it, and only then`() {
+        val hex = "96559930940e7614b89192670e0c5b48fdad6f98b581e436d2acc7d3fe5e90fe"
+        assertEquals(hex, AppUpdate.sha256Of("sha256:$hex"))
+        assertEquals(hex, AppUpdate.sha256Of("SHA256:${hex.uppercase()}"))
+        // Anything that could never match a real file reads as "no digest",
+        // so the download falls back to size and the package check instead of
+        // failing every time.
+        assertEquals("", AppUpdate.sha256Of(""))
+        assertEquals("", AppUpdate.sha256Of("sha512:$hex"))
+        assertEquals("", AppUpdate.sha256Of("sha256:${hex.dropLast(1)}"))
+        assertEquals("", AppUpdate.sha256Of("sha256:${hex.dropLast(1)}z"))
+    }
+
+    @Test
+    fun `a release carries its apk's digest through to the update`() {
+        val hex = "3e2e7d280d445047bc64f5fab69b881b127437bb0d7c65c03c8bcbd8927fea70"
+        val json = """{"tag_name":"v1.4.0","body":"","html_url":"https://example.invalid/r",
+            "assets":[{"name":"prometheus-connect-1.4.0.apk","size":36760366,
+            "browser_download_url":"https://example.invalid/apk","digest":"sha256:$hex"}]}"""
+        val update = AppUpdate.parse(json, "1.3.18")
+        assertNotNull(update)
+        assertEquals(hex, update?.sha256)
+        assertEquals(36_760_366L, update?.sizeBytes)
+    }
 }

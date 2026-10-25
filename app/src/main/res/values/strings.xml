@@ -48,6 +48,12 @@
     <string name="notification_channel_vpn">VPN Tunnel</string>
     <string name="notification_channel_proxy">Proxy Tunnel</string>
     <string name="notification_channel_session">Headless Session</string>
+    <string name="notification_channel_update">App updates</string>
+    <string name="update_notification_downloading">Downloading update %1$s</string>
+    <string name="update_notification_ready">Update %1$s downloaded</string>
+    <string name="update_notification_ready_sub">Tap to install</string>
+    <string name="update_notification_failed">Update %1$s didn\'t download</string>
+    <string name="update_notification_failed_sub">Open the app to try again</string>
     <string name="error_no_destination">Add and select a destination first</string>
     <string name="notification_disconnect">Disconnect</string>
     <string name="dc_mode_not_supported">DC mode not supported - falling back to video</string>
@@ -229,13 +235,21 @@
     <!-- Sideload update notice. The APK is installed by hand, so nothing else
          is ever going to tell the user that a newer one exists. -->
     <string name="update_row_title">Update available %1$s</string>
-    <string name="update_row_sub_sized">%1$s \u00b7 downloads in your browser</string>
-    <string name="update_row_sub">Downloads in your browser</string>
+    <string name="update_row_sub_sized">%1$s \u00b7 installs from the app</string>
+    <string name="update_row_sub">Installs from the app</string>
     <string name="update_sheet_title">Update %1$s</string>
     <string name="update_sheet_subtitle_sized">%1$s \u00b7 %2$s</string>
     <string name="update_sheet_notes_none">This release came without notes</string>
-    <string name="update_sheet_hint">Opens your browser \u00b7 install the file yourself once it has downloaded</string>
-    <string name="update_sheet_download">Download APK</string>
+    <string name="update_sheet_hint">Downloads here, checks the file, then Android asks you to confirm the install</string>
+    <string name="update_sheet_hint_running">%1$s of %2$s</string>
+    <string name="update_sheet_hint_failed_network">The download kept breaking off. What arrived is kept \u2014 try again, or get the file from the release page</string>
+    <string name="update_sheet_hint_failed_corrupt">The file that arrived isn\'t the published one, so it was deleted. Try again, or get it from the release page</string>
+    <string name="update_sheet_hint_no_installer">Android\'s installer didn\'t open. Get the file from the release page</string>
+    <string name="update_sheet_download">Download and install</string>
+    <string name="update_sheet_downloading">Downloading\u2026 %1$d%%</string>
+    <string name="update_sheet_downloading_unsized">Downloading\u2026</string>
+    <string name="update_sheet_install">Install</string>
+    <string name="update_sheet_retry">Try again</string>
     <string name="update_sheet_page">Release page</string>
     <string name="update_no_browser">No browser to open the link</string>
     <string name="settings_row_check_update">Check for updates</string>

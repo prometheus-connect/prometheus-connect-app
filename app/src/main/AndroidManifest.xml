@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="all" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Hands a downloaded update to the system installer. Installs nothing by
+         itself: Android still shows its own confirmation, and the first time
+         asks the user to allow installs from this app. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature
         android:name="android.hardware.camera"

@@ -48,6 +48,12 @@
     <string name="notification_channel_vpn">VPN-туннель</string>
     <string name="notification_channel_proxy">Прокси-туннель</string>
     <string name="notification_channel_session">Фоновый сеанс</string>
+    <string name="notification_channel_update">Обновления приложения</string>
+    <string name="update_notification_downloading">Загрузка обновления %1$s</string>
+    <string name="update_notification_ready">Обновление %1$s скачано</string>
+    <string name="update_notification_ready_sub">Нажмите, чтобы установить</string>
+    <string name="update_notification_failed">Обновление %1$s не скачалось</string>
+    <string name="update_notification_failed_sub">Откройте приложение, чтобы повторить</string>
     <string name="error_no_destination">Сначала добавьте и выберите звонок</string>
     <string name="notification_disconnect">Отключить</string>
     <string name="dc_mode_not_supported">Режим DC не поддерживается — используется Video</string>
@@ -233,13 +239,21 @@
     <!-- Sideload update notice. The APK is installed by hand, so nothing else
          is ever going to tell the user that a newer one exists. -->
     <string name="update_row_title">Доступно обновление %1$s</string>
-    <string name="update_row_sub_sized">%1$s \u00b7 скачается в браузере</string>
-    <string name="update_row_sub">Скачается в браузере</string>
+    <string name="update_row_sub_sized">%1$s \u00b7 установится из приложения</string>
+    <string name="update_row_sub">Установится из приложения</string>
     <string name="update_sheet_title">Обновление %1$s</string>
     <string name="update_sheet_subtitle_sized">%1$s \u00b7 %2$s</string>
     <string name="update_sheet_notes_none">У этого выпуска нет описания</string>
-    <string name="update_sheet_hint">Откроется браузер \u00b7 установите файл сами, когда он скачается</string>
-    <string name="update_sheet_download">Скачать APK</string>
+    <string name="update_sheet_hint">Скачается здесь же, файл будет проверен, затем Android попросит подтвердить установку</string>
+    <string name="update_sheet_hint_running">%1$s из %2$s</string>
+    <string name="update_sheet_hint_failed_network">Загрузка всё время обрывалась. Скачанное сохранено \u2014 повторите или скачайте файл со страницы выпуска</string>
+    <string name="update_sheet_hint_failed_corrupt">Пришёл не тот файл, что опубликован, — он удалён. Повторите или скачайте со страницы выпуска</string>
+    <string name="update_sheet_hint_no_installer">Установщик Android не открылся. Скачайте файл со страницы выпуска</string>
+    <string name="update_sheet_download">Скачать и установить</string>
+    <string name="update_sheet_downloading">Загрузка\u2026 %1$d%%</string>
+    <string name="update_sheet_downloading_unsized">Загрузка\u2026</string>
+    <string name="update_sheet_install">Установить</string>
+    <string name="update_sheet_retry">Повторить</string>
     <string name="update_sheet_page">Страница выпуска</string>
     <string name="update_no_browser">Нет браузера, чтобы открыть ссылку</string>
     <string name="settings_row_check_update">Проверить обновления</string>

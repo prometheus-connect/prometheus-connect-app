@@ -3,6 +3,7 @@ package bypass.whitelist
 import android.app.Application
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
+import bypass.whitelist.update.UpdateDownload
 import bypass.whitelist.util.Prefs
 import androidx.core.os.LocaleListCompat
 import bypass.whitelist.util.LanguageMode
@@ -14,6 +15,7 @@ class App : Application() {
         instance = this
         Prefs.init(this)
         applyTheme(Prefs.themeMode)
+        UpdateDownload.clearStale(this)
     }
 
     companion object {

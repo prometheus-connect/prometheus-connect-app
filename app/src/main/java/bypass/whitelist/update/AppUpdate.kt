@@ -7,8 +7,8 @@ import org.json.JSONObject
  *
  * The app is sideloaded, so nothing tells a user that a new version exists —
  * until now that was a file sent by hand. This is the whole of what the app
- * needs to say so: what the release is called, what it changed, and where its
- * APK can be fetched from an ordinary browser.
+ * needs to say so: what the release is called, what it changed, where its APK
+ * can be fetched, and what that file has to hash to once it has been.
  *
  * Everything here is derived from GitHub's release JSON and nothing else, and
  * all of it is parsed off the main thread by [UpdateCheck].
@@ -21,12 +21,19 @@ data class AppUpdate(
     val downloadUrl: String,
     /** Size of the APK; 0 when the release did not say. */
     val sizeBytes: Long,
+    /** Lower-case hex SHA-256 of the APK as GitHub computed it; empty when it did not say. */
+    val sha256: String,
     /** The release page, so the user can read the rest before spending the megabytes. */
     val pageUrl: String,
 ) {
 
     /** One file attached to a release, cut down to the fields acted on here. */
-    data class Asset(val name: String, val downloadUrl: String, val sizeBytes: Long)
+    data class Asset(
+        val name: String,
+        val downloadUrl: String,
+        val sizeBytes: Long,
+        val sha256: String = "",
+    )
 
     companion object {
 
@@ -52,6 +59,7 @@ data class AppUpdate(
                 assetName = apk.name,
                 downloadUrl = apk.downloadUrl,
                 sizeBytes = apk.sizeBytes,
+                sha256 = apk.sha256,
                 pageUrl = release.optString("html_url"),
             )
         }
@@ -124,8 +132,24 @@ data class AppUpdate(
                 val asset = assets.optJSONObject(index) ?: return@mapNotNull null
                 val url = asset.optString("browser_download_url")
                 if (url.isEmpty()) return@mapNotNull null
-                Asset(asset.optString("name"), url, asset.optLong("size"))
+                Asset(asset.optString("name"), url, asset.optLong("size"), sha256Of(asset.optString("digest")))
             }
+        }
+
+        /**
+         * The hex out of GitHub's `digest` field, or empty.
+         *
+         * GitHub writes it as `sha256:<hex>` on every asset uploaded since
+         * mid-2025. It is what tells a complete download from a cut-off one: the
+         * size alone cannot, because a browser that gave up half-way still
+         * leaves a file behind — 1.3.18 failed for exactly that reason, as
+         * "there's a problem with the app file". Any other algorithm, or a
+         * value that is not 64 hex digits, is treated as no digest at all
+         * rather than one that could never match.
+         */
+        internal fun sha256Of(digest: String): String {
+            val hex = digest.trim().lowercase().removePrefix("sha256:")
+            return if (hex.length == 64 && hex.all { it in '0'..'9' || it in 'a'..'f' }) hex else ""
         }
 
         private fun isSideBuild(name: String): Boolean {
