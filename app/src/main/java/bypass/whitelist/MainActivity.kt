@@ -6,9 +6,11 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
@@ -40,6 +42,7 @@ import bypass.whitelist.tunnel.TunnelServiceState
 import bypass.whitelist.tunnel.TunnelVpnService
 import bypass.whitelist.tunnel.VpnStatus
 import bypass.whitelist.ui.CallsListener
+import bypass.whitelist.ui.ConfirmActionSheet
 import bypass.whitelist.ui.HeadlessVkFragment
 import bypass.whitelist.ui.JoinFragmentHost
 import bypass.whitelist.ui.JoinSessionShutdown
@@ -101,6 +104,10 @@ class MainActivity :
     @Volatile private var loginPollThread: Thread? = null
     /** Auto sign-in fires at most once per connect attempt. */
     @Volatile private var autoLoginAttempted: Boolean = false
+    /** A guest prompt that arrived while we were in the background (in Telegram). */
+    private var pendingGuestPrompt: Boolean = false
+    private var lastGuestPromptMs: Long = 0L
+    @Volatile private var lastGuestRecheckMs: Long = 0L
     private var navPageChangeCallback: ViewPager2.OnPageChangeCallback? = null
     private var navScrollState: Int = ViewPager2.SCROLL_STATE_IDLE
     @Volatile private var resetInProgress: Boolean = false
@@ -295,6 +302,11 @@ class MainActivity :
         }
 
         refreshCorsAuthPrompt()
+        if (pendingGuestPrompt) {
+            pendingGuestPrompt = false
+            promptGuest()
+        }
+        recheckGuestAccount()
     }
 
     override fun onPause() {
@@ -383,42 +395,115 @@ class MainActivity :
      * gets a definite answer even with no instance running — signing in and
      * still seeing "not signed in" was the whole complaint.
      */
-    private fun onTelegramInitDataReceived(initData: String) {
+    private fun onTelegramInitDataReceived(initData: String, silent: Boolean = false) {
         TelegramAuth.storeInitData(initData)
         val login = try {
             corsClient.telegramLogin(initData)
         } catch (e: CorsException) {
             appendLog("Prometheus Connect: telegram login failed: ${e.detail}")
-            runOnUiThread {
+            if (!silent) runOnUiThread {
                 mainFragment()?.onStatusTextChanged(getString(R.string.cors_login_failed, e.detail))
             }
+            return
+        } catch (e: Exception) {
+            if (!silent) throw e
             return
         }
         val eligible = login.role == "user"
         if (eligible) {
             Prefs.corsUsername = login.username
             Prefs.corsSessionToken = login.token
+            Prefs.corsGuestState = ""
+        } else {
+            Prefs.corsGuestState =
+                if (login.registered) Prefs.GUEST_NO_SUBSCRIPTION else Prefs.GUEST_UNREGISTERED
+            if (login.subscriptionBot.isNotEmpty()) Prefs.corsSubscriptionBot = login.subscriptionBot
         }
-        appendLog("Prometheus Connect: signed in as ${login.username} (role=${login.role})")
+        appendLog("Prometheus Connect: signed in as ${login.username} " +
+                "(role=${login.role}, registered=${login.registered})")
         runOnUiThread {
             if (eligible) {
                 mainFragment()?.onCorsSignedIn(login.username)
                 mainFragment()?.onStatusTextChanged(
                     getString(R.string.cors_status_claimed, login.username))
             } else {
-                mainFragment()?.onCorsNoSubscription()
-                mainFragment()?.onStatusTextChanged(
-                    getString(R.string.cors_login_no_subscription, login.username))
+                mainFragment()?.onCorsNoSubscription(login.registered, login.username)
+                mainFragment()?.onStatusTextChanged(login.detail.ifEmpty {
+                    getString(R.string.cors_login_no_subscription, login.username)
+                })
+                if (!silent) promptGuest()
             }
             settingsFragment()?.refresh()
         }
         // Lift the running instance out of its 5-minute window, if there is
         // one; if the sign-in happened before any tunnel existed, go straight
         // on and build it, so one tap really does reach a working connection.
+        // A silent re-check never starts a connection the user did not ask for.
         if (eligible) {
             if (corsController != null) corsController?.resumeClaim()
-            else runOnUiThread { startCorsConnect() }
+            else if (!silent) runOnUiThread { startCorsConnect() }
         }
+    }
+
+    /**
+     * Tells a signed-in guest, in so many words, that the session will drop
+     * after 5 minutes and what to do about it, with the bot one tap away.
+     *
+     * Signing in through the login bot does not create an account, so a new
+     * user can sign in perfectly well and still be cut off; the amber card
+     * alone was read as "login is broken" (2026-10-25). Main thread only.
+     */
+    private fun promptGuest() {
+        val state = Prefs.corsGuestState
+        val bot = Prefs.corsSubscriptionBot
+        if (state.isEmpty() || bot.isEmpty() || isFinishing || isDestroyed) return
+        // Arrives while the user is still in Telegram: a sheet cannot be shown
+        // after onSaveInstanceState, so hold it until we are back in front.
+        if (supportFragmentManager.isStateSaved) {
+            pendingGuestPrompt = true
+            return
+        }
+        // One login plus one connect would otherwise ask twice in a row.
+        val now = SystemClock.elapsedRealtime()
+        if (lastGuestPromptMs != 0L && now - lastGuestPromptMs < GUEST_PROMPT_INTERVAL_MS) return
+        lastGuestPromptMs = now
+        val unregistered = state == Prefs.GUEST_UNREGISTERED
+        ConfirmActionSheet.show(
+            manager = supportFragmentManager,
+            title = getString(
+                if (unregistered) R.string.cors_guest_unregistered_title else R.string.cors_guest_no_sub_title),
+            subtitle = getString(
+                if (unregistered) R.string.cors_guest_unregistered_text else R.string.cors_guest_no_sub_text, bot),
+            confirmLabel = getString(R.string.cors_guest_open_bot),
+            cancelLabel = getString(R.string.cors_guest_later),
+        ) { openSubscriptionBot() }
+    }
+
+    private fun openSubscriptionBot() {
+        val bot = Prefs.corsSubscriptionBot
+        if (bot.isEmpty()) return
+        // tg:// first, for the same reason as the login Mini App: with our VPN
+        // up, an https link that falls through to the browser just hangs.
+        if (!TelegramAuth.openLink(this, "tg://resolve?domain=${Uri.encode(bot)}") &&
+            !TelegramAuth.openLink(this, "https://t.me/$bot")
+        ) {
+            Toast.makeText(this, R.string.cors_toast_no_telegram, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * A guest who went off to the bot to register or pay comes back here.
+     * Ask the server again with the initData we already hold, so a running
+     * session lifts by itself instead of needing a reconnect or a new login.
+     */
+    private fun recheckGuestAccount() {
+        if (Prefs.corsGuestState.isEmpty() || !corsClient.isConfigured) return
+        val initData = TelegramAuth.initData()
+        if (initData.isEmpty()) return
+        val now = SystemClock.elapsedRealtime()
+        if (lastGuestRecheckMs != 0L && now - lastGuestRecheckMs < GUEST_RECHECK_INTERVAL_MS) return
+        lastGuestRecheckMs = now
+        thread(name = "guest-recheck") { onTelegramInitDataReceived(initData, silent = true) }
     }
 
     override fun onCorsSignInPressed() {
@@ -427,6 +512,10 @@ class MainActivity :
         // Telegram for nothing; send them to the account section instead.
         if (Prefs.corsSignedIn) {
             selectNavTab(R.id.navSettings)
+        } else if (Prefs.corsGuestState.isNotEmpty() && Prefs.corsSubscriptionBot.isNotEmpty()) {
+            // Already signed in; what is missing is the account or the
+            // subscription, and both live in the bot.
+            openSubscriptionBot()
         } else {
             signInWithTelegram()
         }
@@ -584,6 +673,21 @@ class MainActivity :
                 mainFragment()?.onCorsSignedIn(username)
                 mainFragment()?.onStatusTextChanged(getString(R.string.cors_status_claimed, username))
                 settingsFragment()?.refresh()
+            }
+        }
+
+        override fun onCorsNotEntitled(detail: String) {
+            appendLog("Prometheus Connect: $detail")
+            runOnUiThread {
+                // Not a fault: the session carries on in its 5-minute window.
+                mainFragment()?.onStatusTextChanged(detail)
+                if (Prefs.corsGuestState.isEmpty()) {
+                    // Signed in on an earlier run, before the server said why.
+                    Prefs.corsGuestState = Prefs.GUEST_NO_SUBSCRIPTION
+                }
+                lastGuestRecheckMs = 0L
+                recheckGuestAccount()
+                promptGuest()
             }
         }
 
@@ -1184,6 +1288,8 @@ class MainActivity :
         private const val CALL_LINK = ""
         private const val TAB_MAIN = 0
         private const val LOGIN_POLL_INTERVAL_MS = 2_000L
+        private const val GUEST_PROMPT_INTERVAL_MS = 60_000L
+        private const val GUEST_RECHECK_INTERVAL_MS = 15_000L
         private const val TAB_SETTINGS = 1
         private const val TAB_LOGS = 2
     }

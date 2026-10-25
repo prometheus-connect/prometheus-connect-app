@@ -45,7 +45,11 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
     /** When the current anonymous session runs out; 0 when there isn't one. */
     private var anonExpiresAtMs: Long = 0L
     /** Signed in to Telegram, but the account carries no active subscription. */
-    private var noSubscription: Boolean = false
+    private var noSubscription: Boolean = Prefs.corsGuestState.isNotEmpty()
+    /** ...and there is no account at all: the subscription bot was never started. */
+    private var unregistered: Boolean = Prefs.corsGuestState == Prefs.GUEST_UNREGISTERED
+    /** The guest's Telegram name, for "signed in as ..." while still capped. */
+    private var guestName: String = ""
 
     private val tickHandler = Handler(Looper.getMainLooper())
     private val tickRunnable = object : Runnable {
@@ -198,6 +202,7 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         corsSignedIn = true
         corsUsername = username
         noSubscription = false
+        unregistered = false
         anonExpiresAtMs = 0L
         renderCorsAccount()
     }
@@ -232,17 +237,23 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
             corsUsername = username
             anonExpiresAtMs = 0L
         }
+        noSubscription = !signedIn && Prefs.corsGuestState.isNotEmpty()
+        unregistered = Prefs.corsGuestState == Prefs.GUEST_UNREGISTERED
         renderCorsAccount()
     }
 
     /**
      * Telegram identity confirmed, but the account has no active subscription.
      * The card stays amber — the session really is still capped — but says why
-     * instead of asking the user to sign in again.
+     * instead of asking the user to sign in again. [registered] false is the
+     * new user who signed in but never started the subscription bot: the
+     * card must say that, or "not signed in" reads as a broken login.
      */
-    fun onCorsNoSubscription() {
+    fun onCorsNoSubscription(registered: Boolean, username: String) {
         corsSignedIn = false
         noSubscription = true
+        unregistered = !registered
+        guestName = username
         renderCorsAccount()
     }
 
@@ -271,19 +282,22 @@ class MainFragment : Fragment(R.layout.fragment_main_screen) {
         val deadline = anonExpiresAtMs
         if (deadline <= 0L) {
             view.bindCorsAccount(false, "", remaining = null, expired = false,
-                noSubscription = noSubscription)
+                noSubscription = noSubscription, unregistered = unregistered,
+                guestName = guestName, subscriptionBot = Prefs.corsSubscriptionBot)
             return
         }
         val leftMs = deadline - System.currentTimeMillis()
         if (leftMs <= 0L) {
             view.bindCorsAccount(false, "", remaining = null, expired = true,
-                noSubscription = noSubscription)
+                noSubscription = noSubscription, unregistered = unregistered,
+                guestName = guestName, subscriptionBot = Prefs.corsSubscriptionBot)
             return
         }
         val totalSeconds = (leftMs / 1000L).toInt()
         val formatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
         view.bindCorsAccount(false, "", remaining = formatted, expired = false,
-            noSubscription = noSubscription)
+            noSubscription = noSubscription, unregistered = unregistered,
+            guestName = guestName, subscriptionBot = Prefs.corsSubscriptionBot)
     }
 
     fun onConnectedChanged(connected: Boolean) {

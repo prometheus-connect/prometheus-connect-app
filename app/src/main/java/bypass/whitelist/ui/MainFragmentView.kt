@@ -151,6 +151,9 @@ class MainFragmentView(private val root: View) {
         remaining: String?,
         expired: Boolean,
         noSubscription: Boolean = false,
+        unregistered: Boolean = false,
+        guestName: String = "",
+        subscriptionBot: String = "",
     ) {
         val context = root.context
         if (signedIn) {
@@ -167,12 +170,25 @@ class MainFragmentView(private val root: View) {
             corsAccountIcon.setColorFilter(warn)
             corsAccountChevron.setColorFilter(warn)
             corsAccountTitle.setTextColor(warn)
-            corsAccountTitle.text = context.getString(R.string.cors_acct_anon_title)
-            corsAccountSub.text = when {
-                noSubscription -> context.getString(R.string.cors_acct_no_subscription)
-                expired -> context.getString(R.string.cors_acct_anon_sub_expired)
-                remaining != null -> context.getString(R.string.cors_acct_anon_sub_live, remaining)
-                else -> context.getString(R.string.cors_acct_anon_sub_idle)
+            if (noSubscription && subscriptionBot.isNotEmpty()) {
+                // Signed in, yet capped: name the reason and the bot that
+                // fixes it. The card then opens that bot when tapped.
+                corsAccountTitle.text = when {
+                    unregistered -> context.getString(R.string.cors_acct_unregistered_title)
+                    guestName.isNotEmpty() -> context.getString(R.string.cors_acct_in_title, guestName)
+                    else -> context.getString(R.string.cors_guest_no_sub_title)
+                }
+                corsAccountSub.text = context.getString(
+                    if (unregistered) R.string.cors_acct_unregistered_sub else R.string.cors_acct_no_sub_bot,
+                    subscriptionBot)
+            } else {
+                corsAccountTitle.text = context.getString(R.string.cors_acct_anon_title)
+                corsAccountSub.text = when {
+                    noSubscription -> context.getString(R.string.cors_acct_no_subscription)
+                    expired -> context.getString(R.string.cors_acct_anon_sub_expired)
+                    remaining != null -> context.getString(R.string.cors_acct_anon_sub_live, remaining)
+                    else -> context.getString(R.string.cors_acct_anon_sub_idle)
+                }
             }
         }
         corsSignInButton.clipToOutline = true

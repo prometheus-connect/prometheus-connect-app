@@ -62,6 +62,12 @@ class CorsInstanceController(
         fun onCorsClaimed(username: String)
         /** Called on the main thread when the flow has failed terminally. */
         fun onCorsFailed(message: String)
+        /**
+         * Called on the main thread when the server refused to lift the session
+         * for this Telegram user (no account or no subscription). The session
+         * keeps its anonymous window; [detail] is the server's own sentence.
+         */
+        fun onCorsNotEntitled(detail: String)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -329,7 +335,7 @@ class CorsInstanceController(
         } catch (e: CorsException) {
             // 403 is "no subscription" and is a real answer, not a fault: the
             // anonymous window stands and the user is told why.
-            if (e.code == 403) post { host.onCorsFailed(e.detail) }
+            if (e.code == 403) post { host.onCorsNotEntitled(e.detail) }
             else Log.w(TAG, "adopt failed: ${e.code} ${e.detail}")
             return
         } catch (e: Exception) {
@@ -452,6 +458,7 @@ class CorsInstanceController(
             // the ongoing session (the instance still runs under its temp TTL).
             when (e.code) {
                 401 -> { TelegramAuth.clear(); post { host.onCorsNeedsTelegram() } }
+                403 -> post { host.onCorsNotEntitled(e.detail) }
                 409, 410 -> { /* already claimed / ended — nothing to do */ }
                 else -> post { host.onCorsStatus(detailMessage("cors_status_failed", e.detail)) }
             }

@@ -114,6 +114,8 @@ object PrefsKeys {
     const val CORS_CLAIM_TOKEN = "cors_claim_token"
     const val CORS_SESSION_TOKEN = "cors_session_token"
     const val CORS_USERNAME = "cors_username"
+    const val CORS_GUEST_STATE = "cors_guest_state"
+    const val CORS_SUBSCRIPTION_BOT = "cors_subscription_bot"
 }
 
 object VP8Defaults {

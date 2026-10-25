@@ -421,6 +421,12 @@ data class LoginOut(
     val role: String,
     val username: String,
     val mustChangePassword: Boolean,
+    /** False when this Telegram user has no account in the subscription bot. */
+    val registered: Boolean,
+    /** Where a guest registers or pays, without "@"; empty from older servers. */
+    val subscriptionBot: String,
+    /** The server's own sentence for a guest; empty when entitled. */
+    val detail: String,
 ) {
     companion object {
         fun parse(o: JSONObject) = LoginOut(
@@ -428,6 +434,10 @@ data class LoginOut(
             role = o.optString("role"),
             username = o.optString("username"),
             mustChangePassword = o.optBoolean("must_change_password"),
+            // An older server does not send these; assume the milder case.
+            registered = o.optBoolean("registered", true),
+            subscriptionBot = o.optString("subscription_bot").removePrefix("@"),
+            detail = if (o.isNull("detail")) "" else o.optString("detail"),
         )
     }
 }

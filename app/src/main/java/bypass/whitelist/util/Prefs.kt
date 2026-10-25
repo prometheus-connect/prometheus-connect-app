@@ -256,6 +256,23 @@ object Prefs {
 
     val corsSignedIn: Boolean get() = corsUsername.isNotEmpty()
 
+    /**
+     * Why a Telegram user who did sign in is still held to 5 minutes:
+     * [GUEST_UNREGISTERED] (never started the subscription bot, so there is
+     * no account at all) or [GUEST_NO_SUBSCRIPTION]. Empty otherwise.
+     */
+    var corsGuestState: String
+        get() = prefs.getString(PrefsKeys.CORS_GUEST_STATE, "") ?: ""
+        set(value) = prefs.edit { putString(PrefsKeys.CORS_GUEST_STATE, value) }
+
+    /** The bot that registers people and sells subscriptions, without "@". */
+    var corsSubscriptionBot: String
+        get() = prefs.getString(PrefsKeys.CORS_SUBSCRIPTION_BOT, "") ?: ""
+        set(value) = prefs.edit { putString(PrefsKeys.CORS_SUBSCRIPTION_BOT, value) }
+
+    const val GUEST_UNREGISTERED = "unregistered"
+    const val GUEST_NO_SUBSCRIPTION = "no_subscription"
+
     var themeMode: ThemeMode
         get() {
             val name = prefs.getString(PrefsKeys.THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
@@ -372,6 +389,7 @@ object Prefs {
             remove(PrefsKeys.CORS_CLAIM_TOKEN)
             remove(PrefsKeys.CORS_SESSION_TOKEN)
             remove(PrefsKeys.CORS_USERNAME)
+            remove(PrefsKeys.CORS_GUEST_STATE)
         }
     }
 
@@ -383,6 +401,7 @@ object Prefs {
             remove(PrefsKeys.CORS_TG_INIT_DATA)
             remove(PrefsKeys.CORS_INSTANCE_ID)
             remove(PrefsKeys.CORS_CLAIM_TOKEN)
+            remove(PrefsKeys.CORS_GUEST_STATE)
         }
     }
 }

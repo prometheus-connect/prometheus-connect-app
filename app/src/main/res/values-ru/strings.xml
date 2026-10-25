@@ -273,6 +273,15 @@
     <string name="cors_login_failed">Не удалось войти: %1$s</string>
     <string name="cors_login_no_subscription">Вы вошли как %1$s, но активной подписки нет</string>
     <string name="cors_acct_no_subscription">Активной подписки нет \u00b7 сеансы остаются по 5 минут</string>
+    <string name="cors_acct_unregistered_title">Вы не зарегистрированы в сервисе</string>
+    <string name="cors_acct_unregistered_sub">Откройте @%1$s и нажмите «Старт» \u00b7 до этого — только 5 минут</string>
+    <string name="cors_acct_no_sub_bot">Подписки нет \u00b7 оформите в @%1$s \u00b7 сеансы по 5 минут</string>
+    <string name="cors_guest_unregistered_title">Вы не зарегистрированы</string>
+    <string name="cors_guest_unregistered_text">Вход через Telegram только подтверждает, кто вы. Чтобы подключение не обрывалось через 5 минут, откройте @%1$s и нажмите «Старт».</string>
+    <string name="cors_guest_no_sub_title">Нет активной подписки</string>
+    <string name="cors_guest_no_sub_text">Оформите подписку в @%1$s — без неё каждый сеанс обрывается через 5 минут.</string>
+    <string name="cors_guest_open_bot">Открыть бота</string>
+    <string name="cors_guest_later">Позже</string>
     <string name="cors_account_signed_out">Вход не выполнен</string>
     <string name="cors_forget_instance">Выйти</string>
     <string name="cors_forget_instance_sub">Очистит сеанс, сохранённый сервер и вход через Telegram</string>
